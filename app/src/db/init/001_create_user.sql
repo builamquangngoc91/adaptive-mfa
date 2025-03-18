@@ -1,0 +1,2 @@
+CREATE USER IF NOT EXISTS amfa_user WITH PASSWORD 'amfa_password';
+GRANT ALL PRIVILEGES ON *.* TO amfa_user;

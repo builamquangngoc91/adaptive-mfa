@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  amfa:
+    build:
+      context: ../
+      dockerfile: docker/local.Dockerfile
+    ports:
+      - "8082:8082"
+      - "2345:2345"
+    volumes:
+      - ../:/go
+      - ../local_data/test:/test
+    env_file:
+      - ../src/.env
+
+  amfa-db:
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    volumes:
+      - ../local_data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_ROOT_PASSWORD=root
+
+  amfa-redis:
+    image: redis:6.2
+    ports:
+      - "6379:6379"
+    volumes:
+      - ../local_data/redis:/redis
