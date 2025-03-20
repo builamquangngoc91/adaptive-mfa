@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,125 +9,65 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"adaptive-mfa/config"
+	"adaptive-mfa/handlers"
+	"adaptive-mfa/pkg/cache"
+	"adaptive-mfa/pkg/database"
+	"adaptive-mfa/repositories"
+
+	_ "github.com/lib/pq"
 )
 
-// Router is a custom HTTP router that handles different methods for the same path
-type Router struct {
-	routes map[string]map[string]http.HandlerFunc
-}
-
-// NewRouter creates a new router instance
-func NewRouter() *Router {
-	return &Router{
-		routes: make(map[string]map[string]http.HandlerFunc),
-	}
-}
-
-// Handle registers a handler for a specific path and method
-func (r *Router) Handle(method, path string, handler http.HandlerFunc) {
-	if r.routes[path] == nil {
-		r.routes[path] = make(map[string]http.HandlerFunc)
-	}
-	r.routes[path][method] = handler
-}
-
-// GET registers a handler for the GET method
-func (r *Router) GET(path string, handler http.HandlerFunc) {
-	r.Handle(http.MethodGet, path, handler)
-}
-
-// POST registers a handler for the POST method
-func (r *Router) POST(path string, handler http.HandlerFunc) {
-	r.Handle(http.MethodPost, path, handler)
-}
-
-// PUT registers a handler for the PUT method
-func (r *Router) PUT(path string, handler http.HandlerFunc) {
-	r.Handle(http.MethodPut, path, handler)
-}
-
-// DELETE registers a handler for the DELETE method
-func (r *Router) DELETE(path string, handler http.HandlerFunc) {
-	r.Handle(http.MethodDelete, path, handler)
-}
-
-// ServeHTTP implements the http.Handler interface
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// Get the handlers for this path
-	if handlers, ok := r.routes[req.URL.Path]; ok {
-		// Check if we have a handler for this method
-		if handler, ok := handlers[req.Method]; ok {
-			handler(w, req)
-			return
-		}
-		// Method not allowed
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		fmt.Fprintf(w, "Method %s not allowed for path %s", req.Method, req.URL.Path)
-		return
-	}
-
-	// No route matched - 404
-	http.NotFound(w, req)
-}
-
-// Handler that responds to GET requests on the root path
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to the simple Go server!")
-}
-
-// Handler that responds to GET requests on the /api/hello endpoint
-func getHello(w http.ResponseWriter, r *http.Request) {
-	response := map[string]string{
-		"message": "Hello, World!",
-		"time":    time.Now().Format(time.RFC3339),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-// Handler that responds to POST requests on the /api/echo endpoint
-func postEcho(w http.ResponseWriter, r *http.Request) {
-	var body map[string]interface{}
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(body)
-}
-
-// Custom logger middleware
-func loggerMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		log.Printf("Request started: %s %s", r.Method, r.URL.Path)
-
-		next.ServeHTTP(w, r)
-
-		log.Printf("Request completed: %s %s in %v", r.Method, r.URL.Path, time.Since(start))
-	})
-}
-
 func main() {
-	// Create a new router
-	router := NewRouter()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
 
-	// Register handlers for different paths and methods
-	router.GET("/", getRoot)
-	router.GET("/api/hello", getHello)
-	router.POST("/api/echo", postEcho)
+	db, err := database.NewDatabase(cfg.Database)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
 
-	// Apply the logger middleware
-	handler := loggerMiddleware(router)
+	if err := db.Ping(context.Background()); err != nil {
+		log.Fatalf("Failed to ping database: %v", err)
+	}
+	fmt.Println("Connected to database")
+
+	cache, err := cache.New(cfg.Cache)
+	if err != nil {
+		log.Fatalf("Failed to connect to cache: %v", err)
+	}
+
+	if err := cache.Ping(context.Background()); err != nil {
+		log.Fatalf("Failed to ping cache: %v", err)
+	}
+	fmt.Println("Connected to cache")
+
+	userRepository := repositories.NewUserRepository(db)
+
+	router := http.ServeMux{}
+	// Register routes with methods
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Health check OK"))
+	})
+
+	authHandler := handlers.NewAuthHandler(cache, userRepository)
+	router.HandleFunc("/v1/register", authHandler.Register)
+	router.HandleFunc("/v1/login", authHandler.Login)
+	router.HandleFunc("/v1/logout", authHandler.Logout)
+	router.HandleFunc("/v1/send-email-verification", authHandler.SendEmailVerification)
+	router.HandleFunc("/v1/verify-email-verification", authHandler.VerifyEmailVerification)
+	router.HandleFunc("/v1/send-phone-verification", authHandler.SendPhoneVerification)
+	router.HandleFunc("/v1/verify-phone-verification", authHandler.VerifyPhoneVerification)
 
 	// Server configuration
 	port := 8082
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
-		Handler:      handler,
+		Handler:      &router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

@@ -7,7 +7,6 @@ services:
       dockerfile: docker/local.Dockerfile
     ports:
       - "8082:8082"
-      - "2345:2345"
     volumes:
       - ../:/go
       - ../local_data/test:/test
@@ -25,7 +24,7 @@ services:
       - POSTGRES_PASSWORD=amfa_password
       - POSTGRES_DB=amfa_db
 
-  amfa-redis:
+  amfa-cache:
     image: redis:6.2
     ports:
       - "6379:6379"

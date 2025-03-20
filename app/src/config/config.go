@@ -2,23 +2,19 @@ package config
 
 import (
 	"os"
+	"strconv"
+	"time"
+
+	"adaptive-mfa/pkg/cache"
+	"adaptive-mfa/pkg/database"
 
 	"github.com/joho/godotenv"
 	_ "github.com/joho/godotenv/autoload"
 )
 
 type Config struct {
-	Database *DatabaseConfig
-}
-
-type DatabaseConfig struct {
-	Host     string `env:"POSTGRES_HOST"`
-	Port     string `env:"POSTGRES_PORT"`
-	User     string `env:"POSTGRES_USER"`
-	Password string `env:"POSTGRES_PASSWORD"`
-	DBName   string `env:"POSTGRES_DB"`
-	Schema   string `env:"POSTGRES_SCHEMA"`
-	SSLMode  string `env:"POSTGRES_SSL_MODE"`
+	Database *database.DatabaseConfig
+	Cache    *cache.CacheConfig
 }
 
 func LoadConfig() (*Config, error) {
@@ -28,18 +24,46 @@ func LoadConfig() (*Config, error) {
 
 	return &Config{
 		Database: LoadDatabaseConfig(),
+		Cache:    LoadCacheConfig(),
 	}, nil
 }
 
-func LoadDatabaseConfig() *DatabaseConfig {
-	cfg := &DatabaseConfig{
-		Host:     os.Getenv("POSTGRES_HOST"),
-		Port:     os.Getenv("POSTGRES_PORT"),
-		User:     os.Getenv("POSTGRES_USER"),
-		Password: os.Getenv("POSTGRES_PASSWORD"),
-		DBName:   os.Getenv("POSTGRES_DB"),
-		Schema:   os.Getenv("POSTGRES_SCHEMA"),
-		SSLMode:  os.Getenv("POSTGRES_SSL_MODE"),
+func LoadDatabaseConfig() *database.DatabaseConfig {
+	maxOpenConns, err := strconv.Atoi(os.Getenv("AMFA_DB_MAX_CONNECTIONS"))
+	if err != nil {
+		maxOpenConns = 10
+	}
+	maxIdleConns, err := strconv.Atoi(os.Getenv("AMFA_DB_IDLE_TIMEOUT"))
+	if err != nil {
+		maxIdleConns = 30000
+	}
+	connMaxLifetime, err := strconv.Atoi(os.Getenv("AMFA_DB_CONN_MAX_LIFETIME"))
+	if err != nil {
+		connMaxLifetime = 30000
+	}
+	cfg := &database.DatabaseConfig{
+		Host:            os.Getenv("AMFA_DB_HOST"),
+		Port:            os.Getenv("AMFA_DB_PORT"),
+		User:            os.Getenv("AMFA_DB_USER"),
+		Password:        os.Getenv("AMFA_DB_PASSWORD"),
+		DBName:          os.Getenv("AMFA_DB_NAME"),
+		Schema:          os.Getenv("AMFA_DB_SCHEMA"),
+		SSLMode:         os.Getenv("AMFA_DB_SSL_MODE"),
+		MaxOpenConns:    maxOpenConns,
+		MaxIdleConns:    maxIdleConns,
+		ConnMaxLifetime: time.Duration(connMaxLifetime) * time.Second,
 	}
 	return cfg
+}
+
+func LoadCacheConfig() *cache.CacheConfig {
+	db, err := strconv.Atoi(os.Getenv("AMFA_CACHE_DB"))
+	if err != nil {
+		db = 0
+	}
+	return &cache.CacheConfig{
+		Host: os.Getenv("AMFA_CACHE_HOST"),
+		Port: os.Getenv("AMFA_CACHE_PORT"),
+		DB:   db,
+	}
 }
