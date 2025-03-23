@@ -56,23 +56,26 @@ func main() {
 		w.Write([]byte("Health check OK"))
 	})
 
-	authHandler := controller.NewAuthHandler(cache, userRepository)
+	registerController := controller.NewRegisterController(cache, userRepository)
+	loginController := controller.NewLoginController(cache, userRepository)
+	userVerificationController := controller.NewUserVerificationController(cache, userRepository)
+	logoutController := controller.NewLogoutController(cache)
 
 	v1Group := s.Router.Group("/v1")
 	v1Group.Use(middleware.LoggerMiddleware)
 
 	{
-		v1Group.Post("/register", authHandler.Register)
-		v1Group.Post("/login", authHandler.Login)
+		v1Group.Post("/register", registerController.Register)
+		v1Group.Post("/login", loginController.Login)
 
 		requiredAuthGroup := v1Group.Group("")
 		requiredAuthGroup.Use(middleware.AuthMiddleware(userRepository, cache))
 		{
-			requiredAuthGroup.Delete("/logout", authHandler.Logout)
-			requiredAuthGroup.Post("/send-email-verification", authHandler.SendEmailVerification)
-			requiredAuthGroup.Post("/verify-email-verification", authHandler.VerifyEmailVerification)
-			requiredAuthGroup.Post("/send-phone-verification", authHandler.SendPhoneVerification)
-			requiredAuthGroup.Post("/verify-phone-verification", authHandler.VerifyPhoneVerification)
+			requiredAuthGroup.Delete("/logout", logoutController.Logout)
+			requiredAuthGroup.Post("/send-email-verification", userVerificationController.SendEmailVerification)
+			requiredAuthGroup.Post("/verify-email-verification", userVerificationController.VerifyEmailVerification)
+			requiredAuthGroup.Post("/send-phone-verification", userVerificationController.SendPhoneVerification)
+			requiredAuthGroup.Post("/verify-phone-verification", userVerificationController.VerifyPhoneVerification)
 		}
 	}
 
