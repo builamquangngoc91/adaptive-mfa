@@ -12,9 +12,11 @@ import (
 
 	"adaptive-mfa/config"
 	"adaptive-mfa/controller"
+	"adaptive-mfa/middleware"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/database"
 	"adaptive-mfa/repository"
+	"adaptive-mfa/server"
 
 	_ "github.com/lib/pq"
 )
@@ -47,31 +49,49 @@ func main() {
 
 	userRepository := repository.NewUserRepository(db)
 
-	router := http.ServeMux{}
-	// Register routes with methods
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	s := server.NewServer(8082)
+
+	s.Use(middleware.LoggerMiddleware)
+
+	s.Router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Health check OK"))
 	})
 
 	authHandler := controller.NewAuthHandler(cache, userRepository)
-	router.HandleFunc("/v1/register", authHandler.Register)
-	router.HandleFunc("/v1/login", authHandler.Login)
-	router.HandleFunc("/v1/logout", authHandler.Logout)
-	router.HandleFunc("/v1/send-email-verification", authHandler.SendEmailVerification)
-	router.HandleFunc("/v1/verify-email-verification", authHandler.VerifyEmailVerification)
-	router.HandleFunc("/v1/send-phone-verification", authHandler.SendPhoneVerification)
-	router.HandleFunc("/v1/verify-phone-verification", authHandler.VerifyPhoneVerification)
+	s.Router.Post("/v1/register", authHandler.Register)
+	s.Router.Post("/v1/login", authHandler.Login)
+	s.Router.Post("/v1/logout", authHandler.Logout)
+	s.Router.Post("/v1/send-email-verification", authHandler.SendEmailVerification)
+	s.Router.Post("/v1/verify-email-verification", authHandler.VerifyEmailVerification)
+	s.Router.Post("/v1/send-phone-verification", authHandler.SendPhoneVerification)
+	s.Router.Post("/v1/verify-phone-verification", authHandler.VerifyPhoneVerification)
 
-	// Server configuration
-	port := 8082
-	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", port),
-		Handler:      &router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
+	// router := http.ServeMux{}
+	// // Register routes with methods
+	// router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.WriteHeader(http.StatusOK)
+	// 	w.Write([]byte("Health check OK"))
+	// })
+
+	// authHandler := controller.NewAuthHandler(cache, userRepository)
+	// router.HandleFunc("/v1/register", authHandler.Register)
+	// router.HandleFunc("/v1/login", authHandler.Login)
+	// router.HandleFunc("/v1/logout", authHandler.Logout)
+	// router.HandleFunc("/v1/send-email-verification", authHandler.SendEmailVerification)
+	// router.HandleFunc("/v1/verify-email-verification", authHandler.VerifyEmailVerification)
+	// router.HandleFunc("/v1/send-phone-verification", authHandler.SendPhoneVerification)
+	// router.HandleFunc("/v1/verify-phone-verification", authHandler.VerifyPhoneVerification)
+
+	// // Server configuration
+	// port := 8082
+	// server := &http.Server{
+	// 	Addr:         fmt.Sprintf(":%d", port),
+	// 	Handler:      &router,
+	// 	ReadTimeout:  15 * time.Second,
+	// 	WriteTimeout: 15 * time.Second,
+	// 	IdleTimeout:  60 * time.Second,
+	// }
 
 	// Channel to listen for interrupt signals
 	stop := make(chan os.Signal, 1)
@@ -79,8 +99,8 @@ func main() {
 
 	// Start the server in a goroutine
 	go func() {
-		log.Printf("Server starting on port %d...", port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Printf("Server starting on port %d...", 8082)
+		if err := s.Run(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
 	}()
@@ -94,7 +114,7 @@ func main() {
 	defer cancel()
 
 	// Attempt graceful shutdown
-	if err := server.Shutdown(ctx); err != nil {
+	if err := s.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
