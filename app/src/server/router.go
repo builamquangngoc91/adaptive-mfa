@@ -8,16 +8,21 @@ import (
 
 type Handler func(w http.ResponseWriter, r *http.Request)
 
+type HandlerWithMiddlewares struct {
+	Handler     Handler
+	Middlewares []Middleware
+}
+
 type Router struct {
-	routes          map[string]map[string]Handler
-	server          *Server
+	routes          map[string]map[string]HandlerWithMiddlewares
+	middlewares     []Middleware
 	notFoundHandler Handler
 }
 
-func NewRouter(server *Server) *Router {
+func NewRouter() *Router {
 	return &Router{
-		routes:          make(map[string]map[string]Handler),
-		server:          server,
+		routes:          make(map[string]map[string]HandlerWithMiddlewares),
+		middlewares:     []Middleware{},
 		notFoundHandler: defaultNotFoundHandler,
 	}
 }
@@ -26,11 +31,23 @@ func (r *Router) NotFound(handler Handler) {
 	r.notFoundHandler = handler
 }
 
-func (r *Router) addRoute(method, path string, handler Handler) {
+func (r *Router) addRoute(method, path string, handler Handler, middlewares ...Middleware) {
 	if r.routes[method] == nil {
-		r.routes[method] = make(map[string]Handler)
+		r.routes[method] = make(map[string]HandlerWithMiddlewares)
 	}
-	r.routes[method][path] = handler
+	r.routes[method][path] = HandlerWithMiddlewares{
+		Handler:     handler,
+		Middlewares: append(r.middlewares, middlewares...),
+	}
+}
+
+func (r *Router) Group(prefix string) *RouterGroup {
+	return &RouterGroup{
+		prefix:      prefix,
+		router:      r,
+		basePath:    "",
+		middlewares: r.middlewares,
+	}
 }
 
 func (r *Router) Get(path string, handler Handler) {
@@ -50,42 +67,31 @@ func (r *Router) Delete(path string, handler Handler) {
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	handler, err := r.findHandler(req.Method, req.URL.Path)
+	handlerWithMiddlewares, err := r.findHandlerWithMiddlewares(req.Method, req.URL.Path)
 	if err != nil {
 		r.notFoundHandler(w, req)
 		return
 	}
-	if r.server != nil {
-		handler = r.server.ApplyMiddleware(handler)
-	}
-	handler(w, req)
+	Chain(handlerWithMiddlewares.Handler, handlerWithMiddlewares.Middlewares...)(w, req)
 }
 
-func (s *Server) ApplyMiddleware(h Handler) Handler {
-	if len(s.middlewares) == 0 {
-		return h
-	}
-
-	return Chain(h, s.middlewares...)
+func (r *Router) Use(middleware Middleware) {
+	r.middlewares = append(r.middlewares, middleware)
 }
 
-func (s *Server) Use(middleware Middleware) {
-	s.middlewares = append(s.middlewares, middleware)
-}
-
-func (r *Router) findHandler(method, path string) (Handler, error) {
+func (r *Router) findHandlerWithMiddlewares(method, path string) (HandlerWithMiddlewares, error) {
 	if methodRoutes, ok := r.routes[method]; ok {
-		if handler, ok := methodRoutes[path]; ok {
-			return handler, nil
+		if handlerWithMiddlewares, ok := methodRoutes[path]; ok {
+			return handlerWithMiddlewares, nil
 		}
 
-		for routePath, handler := range methodRoutes {
+		for routePath, handlerWithMiddlewares := range methodRoutes {
 			if isWildcardMatch(routePath, path) {
-				return handler, nil
+				return handlerWithMiddlewares, nil
 			}
 		}
 	}
-	return nil, fmt.Errorf("no handler found for %s %s", method, path)
+	return HandlerWithMiddlewares{}, fmt.Errorf("no handler found for %s %s", method, path)
 }
 
 func isWildcardMatch(routePath, requestPath string) bool {

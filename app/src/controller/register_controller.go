@@ -120,7 +120,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sha1Token := string(sha1.New().Sum([]byte(token)))
-	if err := h.cache.Set(ctx, cache.GetTokenKey(sha1Token), exp.String(), ptr.ToPtr(time.Hour*24)); err != nil {
+	if err := h.cache.Set(ctx, cache.GetTokenKey(sha1Token), fmt.Sprintf("%d", exp.UnixMilli()), ptr.ToPtr(time.Hour*24)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

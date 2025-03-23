@@ -51,47 +51,30 @@ func main() {
 
 	s := server.NewServer(8082)
 
-	s.Use(middleware.LoggerMiddleware)
-
 	s.Router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Health check OK"))
 	})
 
 	authHandler := controller.NewAuthHandler(cache, userRepository)
-	s.Router.Post("/v1/register", authHandler.Register)
-	s.Router.Post("/v1/login", authHandler.Login)
-	s.Router.Post("/v1/logout", authHandler.Logout)
-	s.Router.Post("/v1/send-email-verification", authHandler.SendEmailVerification)
-	s.Router.Post("/v1/verify-email-verification", authHandler.VerifyEmailVerification)
-	s.Router.Post("/v1/send-phone-verification", authHandler.SendPhoneVerification)
-	s.Router.Post("/v1/verify-phone-verification", authHandler.VerifyPhoneVerification)
 
-	// router := http.ServeMux{}
-	// // Register routes with methods
-	// router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.WriteHeader(http.StatusOK)
-	// 	w.Write([]byte("Health check OK"))
-	// })
+	v1Group := s.Router.Group("/v1")
+	v1Group.Use(middleware.LoggerMiddleware)
 
-	// authHandler := controller.NewAuthHandler(cache, userRepository)
-	// router.HandleFunc("/v1/register", authHandler.Register)
-	// router.HandleFunc("/v1/login", authHandler.Login)
-	// router.HandleFunc("/v1/logout", authHandler.Logout)
-	// router.HandleFunc("/v1/send-email-verification", authHandler.SendEmailVerification)
-	// router.HandleFunc("/v1/verify-email-verification", authHandler.VerifyEmailVerification)
-	// router.HandleFunc("/v1/send-phone-verification", authHandler.SendPhoneVerification)
-	// router.HandleFunc("/v1/verify-phone-verification", authHandler.VerifyPhoneVerification)
+	{
+		v1Group.Post("/register", authHandler.Register)
+		v1Group.Post("/login", authHandler.Login)
 
-	// // Server configuration
-	// port := 8082
-	// server := &http.Server{
-	// 	Addr:         fmt.Sprintf(":%d", port),
-	// 	Handler:      &router,
-	// 	ReadTimeout:  15 * time.Second,
-	// 	WriteTimeout: 15 * time.Second,
-	// 	IdleTimeout:  60 * time.Second,
-	// }
+		requiredAuthGroup := v1Group.Group("")
+		requiredAuthGroup.Use(middleware.AuthMiddleware(userRepository, cache))
+		{
+			requiredAuthGroup.Delete("/logout", authHandler.Logout)
+			requiredAuthGroup.Post("/send-email-verification", authHandler.SendEmailVerification)
+			requiredAuthGroup.Post("/verify-email-verification", authHandler.VerifyEmailVerification)
+			requiredAuthGroup.Post("/send-phone-verification", authHandler.SendPhoneVerification)
+			requiredAuthGroup.Post("/verify-phone-verification", authHandler.VerifyPhoneVerification)
+		}
+	}
 
 	// Channel to listen for interrupt signals
 	stop := make(chan os.Signal, 1)

@@ -9,7 +9,6 @@ import (
 type Server struct {
 	port         int
 	Router       *Router
-	middlewares  []Middleware
 	errorHandler ErrorHandler
 	server       *http.Server
 }
@@ -18,10 +17,9 @@ type ServerOption func(*Server)
 
 func NewServer(port int) *Server {
 	s := &Server{
-		port:        port,
-		middlewares: []Middleware{},
+		port: port,
 	}
-	s.Router = NewRouter(s)
+	s.Router = NewRouter()
 	return s
 }
 
