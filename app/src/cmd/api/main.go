@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"adaptive-mfa/config"
-	"adaptive-mfa/handlers"
+	"adaptive-mfa/controller"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/database"
-	"adaptive-mfa/repositories"
+	"adaptive-mfa/repository"
 
 	_ "github.com/lib/pq"
 )
@@ -45,7 +45,7 @@ func main() {
 	}
 	fmt.Println("Connected to cache")
 
-	userRepository := repositories.NewUserRepository(db)
+	userRepository := repository.NewUserRepository(db)
 
 	router := http.ServeMux{}
 	// Register routes with methods
@@ -54,7 +54,7 @@ func main() {
 		w.Write([]byte("Health check OK"))
 	})
 
-	authHandler := handlers.NewAuthHandler(cache, userRepository)
+	authHandler := controller.NewAuthHandler(cache, userRepository)
 	router.HandleFunc("/v1/register", authHandler.Register)
 	router.HandleFunc("/v1/login", authHandler.Login)
 	router.HandleFunc("/v1/logout", authHandler.Logout)
