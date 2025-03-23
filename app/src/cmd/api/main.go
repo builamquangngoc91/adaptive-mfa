@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -31,24 +30,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-
-	if err := db.Ping(context.Background()); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
-	}
-	fmt.Println("Connected to database")
-
 	cache, err := cache.New(cfg.Cache)
 	if err != nil {
 		log.Fatalf("Failed to connect to cache: %v", err)
 	}
 
-	if err := cache.Ping(context.Background()); err != nil {
-		log.Fatalf("Failed to ping cache: %v", err)
-	}
-	fmt.Println("Connected to cache")
-
 	userRepository := repository.NewUserRepository(db)
-
 	s := server.NewServer(8082)
 
 	s.Router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -57,8 +44,8 @@ func main() {
 	})
 
 	registerController := controller.NewRegisterController(cache, userRepository)
-	loginController := controller.NewLoginController(cache, userRepository)
-	userVerificationController := controller.NewUserVerificationController(cache, userRepository)
+	loginController := controller.NewLoginController(cfg, cache, userRepository)
+	userVerificationController := controller.NewUserVerificationController(cfg, cache, userRepository)
 	logoutController := controller.NewLogoutController(cache)
 
 	v1Group := s.Router.Group("/v1")
@@ -69,7 +56,7 @@ func main() {
 		v1Group.Post("/login", loginController.Login)
 
 		requiredAuthGroup := v1Group.Group("")
-		requiredAuthGroup.Use(middleware.AuthMiddleware(userRepository, cache))
+		requiredAuthGroup.Use(middleware.AuthMiddleware(cfg, cache, userRepository))
 		{
 			requiredAuthGroup.Delete("/logout", logoutController.Logout)
 			requiredAuthGroup.Post("/send-email-verification", userVerificationController.SendEmailVerification)

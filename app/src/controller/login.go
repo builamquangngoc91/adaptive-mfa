@@ -1,15 +1,18 @@
 package controller
 
 import (
-	"adaptive-mfa/pkg/cache"
-	"adaptive-mfa/pkg/ptr"
-	"adaptive-mfa/repository"
 	"crypto/sha1"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
+
+	"adaptive-mfa/config"
+	"adaptive-mfa/domain"
+	"adaptive-mfa/pkg/cache"
+	"adaptive-mfa/pkg/ptr"
+	"adaptive-mfa/repository"
 
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
@@ -20,15 +23,18 @@ type ILoginController interface {
 }
 
 type LoginController struct {
+	cfg            *config.Config
 	cache          cache.ICache
 	userRepository repository.IUserRepository
 }
 
 func NewLoginController(
+	cfg *config.Config,
 	cache cache.ICache,
 	userRepository repository.IUserRepository,
 ) ILoginController {
 	return &LoginController{
+		cfg:            cfg,
 		cache:          cache,
 		userRepository: userRepository,
 	}
@@ -36,7 +42,7 @@ func NewLoginController(
 
 func (h *LoginController) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var request LoginRequest
+	var request domain.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -62,7 +68,7 @@ func (h *LoginController) Login(w http.ResponseWriter, r *http.Request) {
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,
 		"exp": exp.Unix(),
-	}).SignedString([]byte("abc123"))
+	}).SignedString([]byte(h.cfg.Jwt))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

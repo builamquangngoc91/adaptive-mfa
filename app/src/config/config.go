@@ -15,6 +15,7 @@ import (
 type Config struct {
 	Database *database.DatabaseConfig
 	Cache    *cache.CacheConfig
+	Jwt      string
 }
 
 func LoadConfig() (*Config, error) {
@@ -25,6 +26,7 @@ func LoadConfig() (*Config, error) {
 	return &Config{
 		Database: LoadDatabaseConfig(),
 		Cache:    LoadCacheConfig(),
+		Jwt:      os.Getenv("AMFA_JWT_SECRET"),
 	}, nil
 }
 

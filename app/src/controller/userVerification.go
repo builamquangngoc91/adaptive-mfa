@@ -1,7 +1,10 @@
 package controller
 
 import (
+	"adaptive-mfa/config"
+	"adaptive-mfa/domain"
 	"adaptive-mfa/pkg/cache"
+	"adaptive-mfa/pkg/common"
 	"adaptive-mfa/pkg/ptr"
 	"adaptive-mfa/repository"
 	"encoding/json"
@@ -9,8 +12,6 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
-
-	"github.com/dgrijalva/jwt-go"
 )
 
 type IUserVerificationController interface {
@@ -21,15 +22,18 @@ type IUserVerificationController interface {
 }
 
 type UserVerificationController struct {
+	cfg            *config.Config
 	userRepository repository.IUserRepository
 	cache          cache.ICache
 }
 
 func NewUserVerificationController(
+	cfg *config.Config,
 	cache cache.ICache,
 	userRepository repository.IUserRepository,
 ) IUserVerificationController {
 	return &UserVerificationController{
+		cfg:            cfg,
 		cache:          cache,
 		userRepository: userRepository,
 	}
@@ -37,38 +41,10 @@ func NewUserVerificationController(
 
 func (h *UserVerificationController) SendEmailVerification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	tokenString := r.Header.Get("Authorization")
-	if tokenString == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte("abc123"), nil
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	userID := claims["sub"].(string)
-	user, err := h.userRepository.GetByID(ctx, userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_ = user
+	userID := ctx.Value(common.ContextKeyUserID).(string)
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
-
-	if err := h.cache.Set(ctx, cache.GetEmailVerificationCodeKey(user.ID), code, ptr.ToPtr(time.Minute*5)); err != nil {
+	if err := h.cache.Set(ctx, cache.GetEmailVerificationCodeKey(userID), code, ptr.ToPtr(time.Minute*5)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -78,46 +54,16 @@ func (h *UserVerificationController) SendEmailVerification(w http.ResponseWriter
 	w.WriteHeader(http.StatusOK)
 }
 
-type VerifyEmailVerificationRequest struct {
-	Code string `json:"code"`
-}
-
 func (h *UserVerificationController) VerifyEmailVerification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var request VerifyEmailVerificationRequest
+	var request domain.VerifyEmailVerificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	tokenString := r.Header.Get("Authorization")
-	if tokenString == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte("abc123"), nil
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	userID := claims["sub"].(string)
-	user, err := h.userRepository.GetByID(ctx, userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	code, err := h.cache.GetAndDel(ctx, cache.GetEmailVerificationCodeKey(user.ID))
+	userID := ctx.Value(common.ContextKeyUserID).(string)
+	code, err := h.cache.GetAndDel(ctx, cache.GetEmailVerificationCodeKey(userID))
 	if err != nil && err != cache.Nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -128,95 +74,40 @@ func (h *UserVerificationController) VerifyEmailVerification(w http.ResponseWrit
 		return
 	}
 
-	if err := h.userRepository.UpdateEmailVerifiedAt(ctx, user.ID); err != nil {
+	if err := h.userRepository.UpdateEmailVerifiedAt(ctx, userID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Println("Email verified")
-
 	w.WriteHeader(http.StatusOK)
 }
 
 func (h *UserVerificationController) SendPhoneVerification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	tokenString := r.Header.Get("Authorization")
-	if tokenString == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte("abc123"), nil
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	userID := claims["sub"].(string)
-	user, err := h.userRepository.GetByID(ctx, userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_ = user
+	userID := ctx.Value(common.ContextKeyUserID).(string)
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
-
-	if err := h.cache.Set(ctx, cache.GetEmailVerificationCodeKey(user.ID), code, ptr.ToPtr(time.Minute*5)); err != nil {
+	if err := h.cache.Set(ctx, cache.GetPhoneVerificationCodeKey(userID), code, ptr.ToPtr(time.Minute*5)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Printf("Phone verification code: %s\n", code)
-
 	w.WriteHeader(http.StatusOK)
 }
 
 func (h *UserVerificationController) VerifyPhoneVerification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var request VerifyEmailVerificationRequest
+	var request domain.VerifyPhoneVerificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	tokenString := r.Header.Get("Authorization")
-	if tokenString == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	userID := ctx.Value(common.ContextKeyUserID).(string)
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return []byte("abc123"), nil
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	userID := claims["sub"].(string)
-	user, err := h.userRepository.GetByID(ctx, userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	code, err := h.cache.GetAndDel(ctx, cache.GetPhoneVerificationCodeKey(user.ID))
+	code, err := h.cache.GetAndDel(ctx, cache.GetPhoneVerificationCodeKey(userID))
 	if err != nil && err != cache.Nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -227,12 +118,11 @@ func (h *UserVerificationController) VerifyPhoneVerification(w http.ResponseWrit
 		return
 	}
 
-	if err := h.userRepository.UpdatePhoneVerifiedAt(ctx, user.ID); err != nil {
+	if err := h.userRepository.UpdatePhoneVerifiedAt(ctx, userID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Println("Phone verified")
-
 	w.WriteHeader(http.StatusOK)
 }

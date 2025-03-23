@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"adaptive-mfa/domain"
 	"adaptive-mfa/model"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/database"
@@ -29,17 +30,9 @@ func NewRegisterController(cache cache.ICache, userRepository repository.IUserRe
 	}
 }
 
-type RegisterRequest struct {
-	Fullname string `json:"fullname"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
-}
-
 func (h *RegisterController) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var request RegisterRequest
+	var request domain.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -68,7 +61,4 @@ func (h *RegisterController) Register(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
+

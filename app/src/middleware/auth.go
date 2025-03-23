@@ -1,9 +1,12 @@
 package middleware
 
 import (
+	"adaptive-mfa/config"
 	cacheUtils "adaptive-mfa/pkg/cache"
+	"adaptive-mfa/pkg/common"
 	"adaptive-mfa/repository"
 	"adaptive-mfa/server"
+
 	"context"
 	"crypto/sha1"
 	"net/http"
@@ -12,7 +15,11 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-func AuthMiddleware(userRepository repository.IUserRepository, cache cacheUtils.ICache) server.Middleware {
+func AuthMiddleware(
+	cfg *config.Config,
+	cache cacheUtils.ICache,
+	userRepository repository.IUserRepository,
+) server.Middleware {
 	return func(next server.Handler) server.Handler {
 		return func(w http.ResponseWriter, r *http.Request) {
 			tokenStr := r.Header.Get("Authorization")
@@ -24,7 +31,7 @@ func AuthMiddleware(userRepository repository.IUserRepository, cache cacheUtils.
 			}
 
 			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-				return []byte("abc123"), nil
+				return []byte(cfg.Jwt), nil
 			})
 			if err != nil {
 				http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
@@ -55,7 +62,7 @@ func AuthMiddleware(userRepository repository.IUserRepository, cache cacheUtils.
 				return
 			}
 
-			newCtx := context.WithValue(r.Context(), "user-id", user.ID)
+			newCtx := context.WithValue(r.Context(), common.ContextKeyUserID, user.ID)
 			next(w, r.WithContext(newCtx))
 		}
 	}
