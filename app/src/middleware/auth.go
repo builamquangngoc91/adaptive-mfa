@@ -51,7 +51,7 @@ func AuthMiddleware(
 			}
 
 			userID := claims["sub"].(string)
-			user, err := userRepository.GetByID(r.Context(), userID)
+			user, err := userRepository.GetByID(r.Context(), nil, userID)
 			if err != nil {
 				http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
 				return

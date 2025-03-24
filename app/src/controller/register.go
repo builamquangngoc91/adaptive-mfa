@@ -53,12 +53,10 @@ func (h *RegisterController) Register(w http.ResponseWriter, r *http.Request) {
 		Phone:        database.NewNullString(request.Phone),
 	}
 
-	if err := h.userRepository.Create(ctx, &newUser); err != nil {
+	if err := h.userRepository.Create(ctx, nil, &newUser); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 }
-
-

@@ -36,17 +36,19 @@ func main() {
 	}
 
 	userRepository := repository.NewUserRepository(db)
-	s := server.NewServer(8082)
+	userMFARepository := repository.NewUserMFARepository(db)
 
+	s := server.NewServer(8082)
 	s.Router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Health check OK"))
 	})
 
 	registerController := controller.NewRegisterController(cache, userRepository)
-	loginController := controller.NewLoginController(cfg, cache, userRepository)
-	userVerificationController := controller.NewUserVerificationController(cfg, cache, userRepository)
+	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository)
+	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository)
 	logoutController := controller.NewLogoutController(cache)
+	totpController := controller.NewTOTPController(db, userMFARepository, cache)
 
 	v1Group := s.Router.Group("/v1")
 	v1Group.Use(middleware.LoggerMiddleware)
@@ -63,7 +65,14 @@ func main() {
 			requiredAuthGroup.Post("/verify-email-verification", userVerificationController.VerifyEmailVerification)
 			requiredAuthGroup.Post("/send-phone-verification", userVerificationController.SendPhoneVerification)
 			requiredAuthGroup.Post("/verify-phone-verification", userVerificationController.VerifyPhoneVerification)
+			requiredAuthGroup.Get("/add-totp-method", totpController.AddTOTPMethod)
+			requiredAuthGroup.Delete("/delete-totp-method", totpController.DeleteTOTPMethod)
+			requiredAuthGroup.Get("/list-totp-methods", totpController.ListTOTPMethods)
 		}
+
+		v1Group.Post("/verify-totp-code", totpController.VerifyTOTPCode)
+		v1Group.Post("/send-login-email-code", loginController.SendLoginEmailCode)
+		v1Group.Post("/verify-login-email-code", loginController.VerifyLoginEmailCode)
 	}
 
 	// Channel to listen for interrupt signals

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -21,7 +22,9 @@ type CacheConfig struct {
 
 type ICache interface {
 	Get(ctx context.Context, key string) (string, error)
+	GetJSON(ctx context.Context, key string, value interface{}) error
 	Set(ctx context.Context, key string, value string, expiration *time.Duration) error
+	SetJSON(ctx context.Context, key string, value interface{}, expiration *time.Duration) error
 	Del(ctx context.Context, key string) error
 	GetAndDel(ctx context.Context, key string) (string, error)
 	Ping(ctx context.Context) error
@@ -48,8 +51,24 @@ func (r *Cache) Get(ctx context.Context, key string) (string, error) {
 	return result, err
 }
 
+func (r *Cache) GetJSON(ctx context.Context, key string, value interface{}) error {
+	result, err := r.rd.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return Nil
+	}
+	return json.Unmarshal([]byte(result), value)
+}
+
 func (r *Cache) Set(ctx context.Context, key string, value string, expiration *time.Duration) error {
 	return r.rd.Set(ctx, key, value, *expiration).Err()
+}
+
+func (r *Cache) SetJSON(ctx context.Context, key string, value interface{}, expiration *time.Duration) error {
+	json, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return r.rd.Set(ctx, key, json, *expiration).Err()
 }
 
 func (r *Cache) Del(ctx context.Context, key string) error {

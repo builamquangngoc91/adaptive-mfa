@@ -106,17 +106,29 @@ func (d *Database) Prepare(ctx context.Context, query string) (*sql.Stmt, error)
 }
 
 func (d *Database) ExecTx(ctx context.Context, tx *sql.Tx, query string, args ...interface{}) (sql.Result, error) {
+	if tx == nil {
+		return d.Exec(ctx, query, args...)
+	}
 	return tx.ExecContext(ctx, query, args...)
 }
 
 func (d *Database) QueryTx(ctx context.Context, tx *sql.Tx, query string, args ...interface{}) (*sql.Rows, error) {
+	if tx == nil {
+		return d.Query(ctx, query, args...)
+	}
 	return tx.QueryContext(ctx, query, args...)
 }
 
 func (d *Database) QueryRowTx(ctx context.Context, tx *sql.Tx, query string, args ...interface{}) *sql.Row {
+	if tx == nil {
+		return d.QueryRow(ctx, query, args...)
+	}
 	return tx.QueryRowContext(ctx, query, args...)
 }
 
 func (d *Database) PrepareTx(ctx context.Context, tx *sql.Tx, query string) (*sql.Stmt, error) {
+	if tx == nil {
+		return d.Prepare(ctx, query)
+	}
 	return tx.PrepareContext(ctx, query)
 }
