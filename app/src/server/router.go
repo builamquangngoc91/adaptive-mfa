@@ -1,6 +1,7 @@
 package server
 
 import (
+	"adaptive-mfa/domain"
 	"adaptive-mfa/pkg/common"
 	"context"
 	"encoding/json"
@@ -119,8 +120,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			respErr := results[1].Interface()
 			if _err, ok := respErr.(error); ok && respErr != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{
-					"error": _err.Error(),
+				json.NewEncoder(w).Encode(&domain.Error{
+					Message:   _err.Error(),
+					RequestID: common.GetRequestID(ctx),
 				})
 				return
 			}
