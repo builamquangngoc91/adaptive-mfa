@@ -1,10 +1,9 @@
 package controller
 
 import (
+	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
-	"net/http"
 	"time"
 
 	"adaptive-mfa/domain"
@@ -21,10 +20,10 @@ import (
 )
 
 type ITOTPController interface {
-	AddTOTPMethod(w http.ResponseWriter, r *http.Request)
-	DeleteTOTPMethod(w http.ResponseWriter, r *http.Request)
-	VerifyTOTPCode(w http.ResponseWriter, r *http.Request)
-	ListTOTPMethods(w http.ResponseWriter, r *http.Request)
+	AddTOTPMethod(ctx context.Context, req *domain.AddTOTPMethodRequest) (*domain.AddTOTPMethodResponse, error)
+	DeleteTOTPMethod(ctx context.Context, req *domain.DeleteTOTPMethodRequest) (*domain.DeleteTOTPMethodResponse, error)
+	VerifyTOTPCode(ctx context.Context, req *domain.VerifyTOTPCodeRequest) (*domain.VerifyTOTPCodeResponse, error)
+	ListTOTPMethods(ctx context.Context, req *domain.ListTOTPMethodsRequest) (*domain.ListTOTPMethodsResponse, error)
 }
 
 type TOTPController struct {
@@ -41,19 +40,16 @@ func NewTOTPController(db database.IDatabase, userMFARepository repository.IUser
 	}
 }
 
-func (c *TOTPController) AddTOTPMethod(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID := ctx.Value(common.ContextKeyUserID).(string)
+func (c *TOTPController) AddTOTPMethod(ctx context.Context, req *domain.AddTOTPMethodRequest) (*domain.AddTOTPMethodResponse, error) {
+	userID := common.GetUserID(ctx)
 
 	existingUserMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, userID, string(model.UserMFATypeOTP))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	if existingUserMFA != nil {
-		http.Error(w, "TOTP method already exists", http.StatusBadRequest)
-		return
+		return nil, errors.New("TOTP method already exists")
 	}
 
 	totpKey, err := totp.Generate(totp.GenerateOpts{
@@ -62,8 +58,7 @@ func (c *TOTPController) AddTOTPMethod(w http.ResponseWriter, r *http.Request) {
 		SecretSize:  12,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	if err := c.userMFARepository.Create(ctx, nil, &model.UserMFA{
@@ -74,99 +69,74 @@ func (c *TOTPController) AddTOTPMethod(w http.ResponseWriter, r *http.Request) {
 			Secret: totpKey.Secret(),
 		},
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	response := domain.AddTOTPMethodResponse{
+	response := &domain.AddTOTPMethodResponse{
 		Secret: totpKey.Secret(),
 		Issuer: "Adaptive MFA",
 	}
 
-	json.NewEncoder(w).Encode(response)
-	w.WriteHeader(http.StatusOK)
-
+	return response, nil
 }
 
-func (c *TOTPController) DeleteTOTPMethod(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID := ctx.Value(common.ContextKeyUserID).(string)
-
+func (c *TOTPController) DeleteTOTPMethod(ctx context.Context, req *domain.DeleteTOTPMethodRequest) (*domain.DeleteTOTPMethodResponse, error) {
+	userID := common.GetUserID(ctx)
 	userMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, userID, string(model.UserMFATypeOTP))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	if userMFA == nil {
-		http.Error(w, "TOTP method not found", http.StatusBadRequest)
-		return
+		return nil, errors.New("TOTP method not found")
 	}
 
 	if err := c.userMFARepository.SoftDelete(ctx, nil, userMFA.ID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	w.WriteHeader(http.StatusOK)
+	return &domain.DeleteTOTPMethodResponse{}, nil
 }
 
-func (c *TOTPController) VerifyTOTPCode(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	var request domain.VerifyTOTPCodeRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
+func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyTOTPCodeRequest) (*domain.VerifyTOTPCodeResponse, error) {
 	var mfaMetadata domain.MFAMetadata
-	if err := c.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(request.ReferenceID), &mfaMetadata); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := c.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
+		return nil, err
 	}
 
 	userMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, mfaMetadata.UserID, string(model.UserMFATypeOTP))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	if userMFA == nil {
-		http.Error(w, "TOTP method not found", http.StatusBadRequest)
-		return
+		return nil, errors.New("TOTP method not found")
 	}
 
-	valid := totp.Validate(request.Code, userMFA.Metadata.Secret)
+	valid := totp.Validate(req.Code, userMFA.Metadata.Secret)
 	if !valid {
-		http.Error(w, "Invalid TOTP code", http.StatusBadRequest)
-		return
+		return nil, errors.New("invalid TOTP code")
 	}
 
 	mfaMetadata.Type = domain.UserMFATypeOTP
 	mfaMetadata.PrivateKey = randstr.Hex(16)
-	if err := c.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(request.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := c.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
+		return nil, err
 	}
 
-	response := domain.VerifyTOTPCodeResponse{
-		ReferenceID: request.ReferenceID,
+	response := &domain.VerifyTOTPCodeResponse{
+		ReferenceID: req.ReferenceID,
 		PrivateKey:  mfaMetadata.PrivateKey,
 	}
 
-	json.NewEncoder(w).Encode(response)
-	w.WriteHeader(http.StatusOK)
+	return response, nil
 }
 
-func (c *TOTPController) ListTOTPMethods(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	userID := ctx.Value(common.ContextKeyUserID).(string)
-
+func (c *TOTPController) ListTOTPMethods(ctx context.Context, req *domain.ListTOTPMethodsRequest) (*domain.ListTOTPMethodsResponse, error) {
+	userID := common.GetUserID(ctx)
 	userMFAs, err := c.userMFARepository.ListByUserID(ctx, nil, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	methods := make([]string, len(userMFAs))
@@ -174,10 +144,9 @@ func (c *TOTPController) ListTOTPMethods(w http.ResponseWriter, r *http.Request)
 		methods[i] = string(userMFA.MFAType)
 	}
 
-	response := domain.ListTOTPMethodsResponse{
+	response := &domain.ListTOTPMethodsResponse{
 		Methods: methods,
 	}
 
-	json.NewEncoder(w).Encode(response)
-	w.WriteHeader(http.StatusOK)
+	return response, nil
 }

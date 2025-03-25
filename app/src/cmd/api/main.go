@@ -39,9 +39,8 @@ func main() {
 	userMFARepository := repository.NewUserMFARepository(db)
 
 	s := server.NewServer(8082)
-	s.Router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Health check OK"))
+	s.Router.Get("/health", func(ctx context.Context, req any) (any, error) {
+		return "Health check OK", nil
 	})
 
 	registerController := controller.NewRegisterController(cache, userRepository)
@@ -49,12 +48,13 @@ func main() {
 	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository)
 	logoutController := controller.NewLogoutController(cache)
 	totpController := controller.NewTOTPController(db, userMFARepository, cache)
+	hackedController := controller.NewHackedController(cfg, cache)
 
 	v1Group := s.Router.Group("/v1")
 	v1Group.Use(middleware.LoggerMiddleware)
 	v1Group.Use(middleware.RequestIDMiddleware)
 	{
-		authGroup := v1Group.Group("auth")
+		authGroup := v1Group.Group("/auth")
 		authGroup.Post("/verify-totp-code", totpController.VerifyTOTPCode)
 		authGroup.Post("/send-login-email-code", loginController.SendLoginEmailCode)
 		authGroup.Post("/verify-login-email-code", loginController.VerifyLoginEmailCode)
@@ -64,10 +64,7 @@ func main() {
 		authGroup.Post("/login", loginController.Login)
 		authGroup.Post("/login-with-mfa", loginController.LoginWithMFA)
 
-		v1Group.Get("/hacked/disavow", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Disavow OK"))
-		})
+		v1Group.Get("/hacked/disavow", hackedController.Disavow)
 
 		requiredAuthGroup := v1Group.Group("")
 		requiredAuthGroup.Use(middleware.AuthMiddleware(cfg, cache, userRepository))

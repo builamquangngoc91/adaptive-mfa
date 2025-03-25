@@ -3,11 +3,13 @@ package controller
 import (
 	"adaptive-mfa/config"
 	"adaptive-mfa/pkg/cache"
-	"net/http"
+	"adaptive-mfa/pkg/common"
+	"context"
+	"errors"
 )
 
 type IHackedController interface {
-	Disavow(w http.ResponseWriter, r *http.Request)
+	Disavow(ctx context.Context, req any) (any, error)
 }
 
 type HackedController struct {
@@ -22,19 +24,17 @@ func NewHackedController(cfg *config.Config, cache cache.ICache) IHackedControll
 	}
 }
 
-func (h *HackedController) Disavow(w http.ResponseWriter, r *http.Request) {
-	referenceID := r.URL.Query().Get("ref")
+func (h *HackedController) Disavow(ctx context.Context, req any) (any, error) {
+	referenceID := common.GetParams(ctx).Get("ref")
 
 	// TODO: Save the reference ID to the database
 	if referenceID == "" {
-		http.Error(w, "Reference ID is required", http.StatusBadRequest)
-		return
+		return nil, errors.New("reference ID is required")
 	}
 
-	if err := h.cache.Del(r.Context(), cache.GetMFAReferenceIDKey(referenceID)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := h.cache.Del(ctx, cache.GetMFAReferenceIDKey(referenceID)); err != nil {
+		return nil, err
 	}
 
-	w.WriteHeader(http.StatusOK)
+	return "Disavow OK", nil
 }

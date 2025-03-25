@@ -31,16 +31,30 @@ type SendLoginEmailCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 }
 
+type SendLoginEmailCodeResponse struct{}
+
 type VerifyLoginEmailCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 	Code        string `json:"code"`
+}
+
+type VerifyLoginEmailCodeResponse struct {
+	ReferenceID string `json:"reference_id"`
+	PrivateKey  string `json:"private_key"`
 }
 
 type SendLoginPhoneCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 }
 
+type SendLoginPhoneCodeResponse struct{}
+
 type VerifyLoginPhoneCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 	Code        string `json:"code"`
+}
+
+type VerifyLoginPhoneCodeResponse struct {
+	ReferenceID string `json:"reference_id"`
+	PrivateKey  string `json:"private_key"`
 }

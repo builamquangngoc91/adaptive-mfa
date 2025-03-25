@@ -1,8 +1,7 @@
 package controller
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
 
 	"adaptive-mfa/domain"
 	"adaptive-mfa/model"
@@ -15,7 +14,7 @@ import (
 )
 
 type IRegisterController interface {
-	Register(w http.ResponseWriter, r *http.Request)
+	Register(context.Context, *domain.RegisterRequest) (*domain.RegisterResponse, error)
 }
 
 type RegisterController struct {
@@ -30,33 +29,24 @@ func NewRegisterController(cache cache.ICache, userRepository repository.IUserRe
 	}
 }
 
-func (h *RegisterController) Register(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var request domain.RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), 14)
+func (h *RegisterController) Register(ctx context.Context, req *domain.RegisterRequest) (*domain.RegisterResponse, error) {
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	newUser := model.User{
 		ID:           uuid.New().String(),
-		Fullname:     request.Fullname,
-		Username:     request.Username,
+		Fullname:     req.Fullname,
+		Username:     req.Username,
 		HashPassword: string(hashPassword),
-		Email:        database.NewNullString(request.Email),
-		Phone:        database.NewNullString(request.Phone),
+		Email:        database.NewNullString(req.Email),
+		Phone:        database.NewNullString(req.Phone),
 	}
 
 	if err := h.userRepository.Create(ctx, nil, &newUser); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	return &domain.RegisterResponse{}, nil
 }

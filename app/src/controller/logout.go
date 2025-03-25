@@ -1,13 +1,16 @@
 package controller
 
 import (
+	"adaptive-mfa/domain"
 	"adaptive-mfa/pkg/cache"
+	"adaptive-mfa/pkg/common"
+	"context"
 	"crypto/sha1"
-	"net/http"
+	"errors"
 )
 
 type ILogoutController interface {
-	Logout(w http.ResponseWriter, r *http.Request)
+	Logout(context.Context, *domain.LogoutRequest) (*domain.LogoutResponse, error)
 }
 
 type LogoutController struct {
@@ -20,19 +23,16 @@ func NewLogoutController(cache cache.ICache) ILogoutController {
 	}
 }
 
-func (h *LogoutController) Logout(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	token := r.Header.Get("Authorization")
+func (h *LogoutController) Logout(ctx context.Context, req *domain.LogoutRequest) (*domain.LogoutResponse, error) {
+	token := common.GetHeaders(ctx).Get("Authorization")
 	if token == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
+		return nil, errors.New("Unauthorized")
 	}
 
 	sha1Token := string(sha1.New().Sum([]byte(token)))
 	if err := h.cache.Del(ctx, cache.GetTokenKey(sha1Token)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	w.WriteHeader(http.StatusOK)
+	return &domain.LogoutResponse{}, nil
 }

@@ -1,15 +1,20 @@
 package server
 
 import (
+	"adaptive-mfa/pkg/common"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"reflect"
 	"strings"
 )
 
-type Handler func(w http.ResponseWriter, r *http.Request)
+type Handler func(http.ResponseWriter, *http.Request)
 
 type HandlerWithMiddlewares struct {
-	Handler     Handler
+	Handler     interface{}
 	Middlewares []Middleware
 }
 
@@ -31,7 +36,7 @@ func (r *Router) NotFound(handler Handler) {
 	r.notFoundHandler = handler
 }
 
-func (r *Router) addRoute(method, path string, handler Handler, middlewares ...Middleware) {
+func (r *Router) addRoute(method, path string, handler interface{}, middlewares ...Middleware) {
 	if r.routes[method] == nil {
 		r.routes[method] = make(map[string]HandlerWithMiddlewares)
 	}
@@ -50,19 +55,19 @@ func (r *Router) Group(prefix string) *RouterGroup {
 	}
 }
 
-func (r *Router) Get(path string, handler Handler) {
+func (r *Router) Get(path string, handler interface{}) {
 	r.addRoute(http.MethodGet, path, handler)
 }
 
-func (r *Router) Post(path string, handler Handler) {
+func (r *Router) Post(path string, handler interface{}) {
 	r.addRoute(http.MethodPost, path, handler)
 }
 
-func (r *Router) Put(path string, handler Handler) {
+func (r *Router) Put(path string, handler interface{}) {
 	r.addRoute(http.MethodPut, path, handler)
 }
 
-func (r *Router) Delete(path string, handler Handler) {
+func (r *Router) Delete(path string, handler interface{}) {
 	r.addRoute(http.MethodDelete, path, handler)
 }
 
@@ -72,7 +77,52 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.notFoundHandler(w, req)
 		return
 	}
-	Chain(handlerWithMiddlewares.Handler, handlerWithMiddlewares.Middlewares...)(w, req)
+
+	newHandler := func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, common.ContextKeyParams, req.URL.Query())
+		ctx = context.WithValue(ctx, common.ContextKeyHeaders, req.Header)
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		handler := handlerWithMiddlewares.Handler
+
+		handlerValue := reflect.ValueOf(handler)
+		handlerType := reflect.TypeOf(handler)
+
+		if handlerType.NumIn() != 2 {
+			http.Error(w, "handler must have 2 arguments", http.StatusInternalServerError)
+			return
+		}
+
+		reqType := handlerType.In(1)
+		req := reflect.New(reqType).Interface()
+		if err := json.Unmarshal(body, req); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		results := handlerValue.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(req).Elem()})
+		if len(results) != 2 {
+			http.Error(w, "handler must return 2 values", http.StatusInternalServerError)
+			return
+		}
+
+		resp := results[0].Interface()
+		respErr := results[1].Interface()
+		if _err, ok := respErr.(error); ok {
+			http.Error(w, _err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		json.NewEncoder(w).Encode(resp)
+		w.WriteHeader(http.StatusOK)
+	}
+	Chain(newHandler, handlerWithMiddlewares.Middlewares...)(w, req)
 }
 
 func (r *Router) Use(middleware Middleware) {

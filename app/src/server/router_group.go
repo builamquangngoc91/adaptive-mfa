@@ -22,19 +22,19 @@ func (g *RouterGroup) Use(middleware Middleware) {
 	g.middlewares = append(g.middlewares, middleware)
 }
 
-func (g *RouterGroup) Get(path string, handler Handler) {
+func (g *RouterGroup) Get(path string, handler interface{}) {
 	g.router.addRoute(http.MethodGet, g.getFullPath(path), handler, g.middlewares...)
 }
 
-func (g *RouterGroup) Post(path string, handler Handler) {
+func (g *RouterGroup) Post(path string, handler interface{}) {
 	g.router.addRoute(http.MethodPost, g.getFullPath(path), handler, g.middlewares...)
 }
 
-func (g *RouterGroup) Put(path string, handler Handler) {
+func (g *RouterGroup) Put(path string, handler interface{}) {
 	g.router.addRoute(http.MethodPut, g.getFullPath(path), handler, g.middlewares...)
 }
 
-func (g *RouterGroup) Delete(path string, handler Handler) {
+func (g *RouterGroup) Delete(path string, handler interface{}) {
 	g.router.addRoute(http.MethodDelete, g.getFullPath(path), handler, g.middlewares...)
 }
 

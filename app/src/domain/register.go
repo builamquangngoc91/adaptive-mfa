@@ -7,3 +7,5 @@ type RegisterRequest struct {
 	Email    string `json:"email"`
 	Phone    string `json:"phone"`
 }
+
+type RegisterResponse struct{}

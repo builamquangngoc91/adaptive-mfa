@@ -1,5 +1,7 @@
 package domain
 
+type AddTOTPMethodRequest struct{}
+
 type AddTOTPMethodResponse struct {
 	Secret string `json:"secret"`
 	Issuer string `json:"issuer"`
@@ -15,9 +17,15 @@ type VerifyTOTPCodeResponse struct {
 	PrivateKey  string `json:"private_key"`
 }
 
+type ListTOTPMethodsRequest struct{}
+
 type ListTOTPMethodsResponse struct {
 	Methods []string `json:"methods"`
 }
+
+type DeleteTOTPMethodRequest struct{}
+
+type DeleteTOTPMethodResponse struct{}
 
 type MFAMetadata struct {
 	PrivateKey string      `json:"private_key"`
