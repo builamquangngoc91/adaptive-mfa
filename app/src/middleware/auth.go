@@ -44,8 +44,7 @@ func AuthMiddleware(
 				return
 			}
 
-			exp := int64(claims["exp"].(float64))
-			if exp < time.Now().Unix() {
+			if exp := int64(claims["exp"].(float64)); exp < time.Now().Unix() {
 				http.Error(w, "Unauthorized: Token expired", http.StatusUnauthorized)
 				return
 			}

@@ -52,10 +52,22 @@ func main() {
 
 	v1Group := s.Router.Group("/v1")
 	v1Group.Use(middleware.LoggerMiddleware)
-
+	v1Group.Use(middleware.RequestIDMiddleware)
 	{
-		v1Group.Post("/register", registerController.Register)
-		v1Group.Post("/login", loginController.Login)
+		authGroup := v1Group.Group("auth")
+		authGroup.Post("/verify-totp-code", totpController.VerifyTOTPCode)
+		authGroup.Post("/send-login-email-code", loginController.SendLoginEmailCode)
+		authGroup.Post("/verify-login-email-code", loginController.VerifyLoginEmailCode)
+		authGroup.Post("/send-login-phone-code", loginController.SendLoginPhoneCode)
+		authGroup.Post("/verify-login-phone-code", loginController.VerifyLoginPhoneCode)
+		authGroup.Post("/register", registerController.Register)
+		authGroup.Post("/login", loginController.Login)
+		authGroup.Post("/login-with-mfa", loginController.LoginWithMFA)
+
+		v1Group.Get("/hacked/disavow", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Disavow OK"))
+		})
 
 		requiredAuthGroup := v1Group.Group("")
 		requiredAuthGroup.Use(middleware.AuthMiddleware(cfg, cache, userRepository))
@@ -69,10 +81,6 @@ func main() {
 			requiredAuthGroup.Delete("/delete-totp-method", totpController.DeleteTOTPMethod)
 			requiredAuthGroup.Get("/list-totp-methods", totpController.ListTOTPMethods)
 		}
-
-		v1Group.Post("/verify-totp-code", totpController.VerifyTOTPCode)
-		v1Group.Post("/send-login-email-code", loginController.SendLoginEmailCode)
-		v1Group.Post("/verify-login-email-code", loginController.VerifyLoginEmailCode)
 	}
 
 	// Channel to listen for interrupt signals

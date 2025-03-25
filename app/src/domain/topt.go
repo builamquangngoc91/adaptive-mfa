@@ -20,6 +20,15 @@ type ListTOTPMethodsResponse struct {
 }
 
 type MFAMetadata struct {
-	PrivateKey string `json:"private_key"`
-	UserID     string `json:"user_id"`
+	PrivateKey string      `json:"private_key"`
+	UserID     string      `json:"user_id"`
+	Type       UserMFAType `json:"type"`
 }
+
+type UserMFAType string
+
+const (
+	UserMFATypePhone UserMFAType = "phone"
+	UserMFATypeEmail UserMFAType = "email"
+	UserMFATypeOTP   UserMFAType = "otp"
+)

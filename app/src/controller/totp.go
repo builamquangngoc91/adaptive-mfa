@@ -143,8 +143,8 @@ func (c *TOTPController) VerifyTOTPCode(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	mfaMetadata.Type = domain.UserMFATypeOTP
 	mfaMetadata.PrivateKey = randstr.Hex(16)
-
 	if err := c.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(request.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

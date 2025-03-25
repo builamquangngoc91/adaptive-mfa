@@ -1,25 +1,23 @@
 package domain
 
 type LoginRequest struct {
-	Type      LoginType              `json:"type"`
-	BasicAuth *BasicAuthLoginRequest `json:"basic_auth"`
-	MFA       *MFARequest            `json:"mfa"`
-}
-
-type LoginResponse struct {
-	Token       string `json:"token"`
-	RequiredMFA bool   `json:"required_mfa"`
-	ReferenceID string `json:"reference_id"`
-}
-
-type BasicAuthLoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-type MFARequest struct {
+type LoginResponse struct {
+	Token       string `json:"token,omitempty"`
+	RequiredMFA bool   `json:"required_mfa"`
+	ReferenceID string `json:"reference_id,omitempty"`
+}
+
+type LoginWithMFARequest struct {
 	ReferenceID string `json:"reference_id"`
 	PrivateKey  string `json:"private_key"`
+}
+
+type LoginWithMFAResponse struct {
+	Token string `json:"token"`
 }
 
 type LoginType string
