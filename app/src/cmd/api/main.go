@@ -50,20 +50,14 @@ func main() {
 	})
 	s.Router.Use(middleware.PrometheusMiddleware)
 
-	reg := prometheus.NewRegistry()
-	reg.MustRegister(monitor.HttpRequestCounter)
-	reg.MustRegister(monitor.ActiveRequestsGauge)
-	reg.MustRegister(monitor.LatencyHistogram)
-	reg.MustRegister(monitor.LatencySummary)
-	reg.MustRegister(monitor.SMSSendCounter)
-	reg.MustRegister(monitor.EmailSendCounter)
+	prometheus.MustRegister(monitor.HttpRequestCounter)
+	prometheus.MustRegister(monitor.ActiveRequestsGauge)
+	prometheus.MustRegister(monitor.LatencyHistogram)
+	prometheus.MustRegister(monitor.LatencySummary)
+	prometheus.MustRegister(monitor.SMSSendCounter)
+	prometheus.MustRegister(monitor.EmailSendCounter)
 
-	handler := promhttp.HandlerFor(
-		reg,
-		promhttp.HandlerOpts{},
-	)
-
-	s.Router.Get("/metrics", handler)
+	s.Router.Get("/metrics", promhttp.Handler())
 
 	emailService := email.NewEmail()
 	smsService := sms.NewSMS()

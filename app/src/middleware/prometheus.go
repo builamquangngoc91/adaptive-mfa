@@ -9,11 +9,14 @@ import (
 	"adaptive-mfa/server"
 )
 
-var ()
-
 type statusRecorder struct {
 	http.ResponseWriter
 	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(statusCode int) {
+	r.statusCode = statusCode
+	r.ResponseWriter.WriteHeader(statusCode)
 }
 
 func PrometheusMiddleware(next server.Handler) server.Handler {

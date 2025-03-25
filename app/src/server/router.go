@@ -118,8 +118,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			resp := results[0].Interface()
 			respErr := results[1].Interface()
 			if _err, ok := respErr.(error); ok && respErr != nil {
-				w.Write([]byte(_err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{
+					"error": _err.Error(),
+				})
 				return
 			}
 

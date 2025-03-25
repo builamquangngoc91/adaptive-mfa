@@ -85,12 +85,10 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 	}
 
 	if h.isRequiredMFA() {
-		response := &domain.LoginResponse{
+		return &domain.LoginResponse{
 			RequiredMFA: true,
 			ReferenceID: requestID,
-		}
-
-		return response, nil
+		}, nil
 	}
 
 	token, err := h.generateToken(ctx, user)
