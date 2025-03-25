@@ -5,6 +5,7 @@ services:
     build:
       context: ../
       dockerfile: docker/local.Dockerfile
+    container_name: amfa
     ports:
       - "8082:8082"
     volumes:
@@ -12,6 +13,8 @@ services:
       - ../local_data/test:/test
     env_file:
       - ../src/.env
+    networks:
+      - amfa-network
 
   amfa-db:
     image: postgres:13
@@ -23,6 +26,8 @@ services:
       - POSTGRES_USER=amfa_user
       - POSTGRES_PASSWORD=amfa_password
       - POSTGRES_DB=amfa_db
+    networks:
+      - amfa-network
 
   amfa-cache:
     image: redis:6.2
@@ -30,3 +35,31 @@ services:
       - "6379:6379"
     volumes:
       - ../local_data/redis:/redis
+    networks:
+      - amfa-network
+
+  amfa-prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ../src/prometheus.yml:/etc/prometheus/prometheus.yml
+      - amfa-prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.enable-lifecycle
+    expose:
+      - 9090
+    ports:
+      - 9090:9090
+    networks:
+      - amfa-network
+
+networks:
+  amfa-network:
+
+volumes:
+  amfa-prometheus-data:

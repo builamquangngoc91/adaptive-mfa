@@ -45,16 +45,16 @@ func New(cfg *CacheConfig) (ICache, error) {
 
 func (r *Cache) Get(ctx context.Context, key string) (string, error) {
 	result, err := r.rd.Get(ctx, key).Result()
-	if err == redis.Nil {
-		return "", Nil
+	if err != nil {
+		return "", err
 	}
-	return result, err
+	return result, nil
 }
 
 func (r *Cache) GetJSON(ctx context.Context, key string, value interface{}) error {
 	result, err := r.rd.Get(ctx, key).Result()
-	if err == redis.Nil {
-		return Nil
+	if err != nil {
+		return err
 	}
 	return json.Unmarshal([]byte(result), value)
 }
@@ -77,10 +77,10 @@ func (r *Cache) Del(ctx context.Context, key string) error {
 
 func (r *Cache) GetAndDel(ctx context.Context, key string) (string, error) {
 	result, err := r.rd.GetDel(ctx, key).Result()
-	if err == redis.Nil {
-		return "", Nil
+	if err != nil {
+		return "", err
 	}
-	return result, err
+	return result, nil
 }
 
 func (r *Cache) Ping(ctx context.Context) error {

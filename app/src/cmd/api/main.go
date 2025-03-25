@@ -14,10 +14,16 @@ import (
 	"adaptive-mfa/middleware"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/database"
+	"adaptive-mfa/pkg/email"
+	"adaptive-mfa/pkg/monitor"
+	"adaptive-mfa/pkg/sms"
 	"adaptive-mfa/repository"
 	"adaptive-mfa/server"
 
 	_ "github.com/lib/pq"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -42,10 +48,28 @@ func main() {
 	s.Router.Get("/health", func(ctx context.Context, req any) (any, error) {
 		return "Health check OK", nil
 	})
+	s.Router.Use(middleware.PrometheusMiddleware)
 
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(monitor.HttpRequestCounter)
+	reg.MustRegister(monitor.ActiveRequestsGauge)
+	reg.MustRegister(monitor.LatencyHistogram)
+	reg.MustRegister(monitor.LatencySummary)
+	reg.MustRegister(monitor.SMSSendCounter)
+	reg.MustRegister(monitor.EmailSendCounter)
+
+	handler := promhttp.HandlerFor(
+		reg,
+		promhttp.HandlerOpts{},
+	)
+
+	s.Router.Get("/metrics", handler)
+
+	emailService := email.NewEmail()
+	smsService := sms.NewSMS()
 	registerController := controller.NewRegisterController(cache, userRepository)
-	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository)
-	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository)
+	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository, emailService, smsService)
+	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository, emailService, smsService)
 	logoutController := controller.NewLogoutController(cache)
 	totpController := controller.NewTOTPController(db, userMFARepository, cache)
 	hackedController := controller.NewHackedController(cfg, cache)

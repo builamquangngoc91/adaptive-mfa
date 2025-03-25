@@ -14,11 +14,12 @@ import (
 	"adaptive-mfa/model"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/common"
+	"adaptive-mfa/pkg/email"
 	"adaptive-mfa/pkg/ptr"
+	"adaptive-mfa/pkg/sms"
 	"adaptive-mfa/repository"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 	"github.com/thanhpk/randstr"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -37,6 +38,8 @@ type LoginController struct {
 	cache             cache.ICache
 	userRepository    repository.IUserRepository
 	userMFARepository repository.IUserMFARepository
+	emailService      email.IEmail
+	smsService        sms.ISMS
 }
 
 func NewLoginController(
@@ -44,12 +47,16 @@ func NewLoginController(
 	cache cache.ICache,
 	userRepository repository.IUserRepository,
 	userMFARepository repository.IUserMFARepository,
+	emailService email.IEmail,
+	smsService sms.ISMS,
 ) ILoginController {
 	return &LoginController{
 		cfg:               cfg,
 		cache:             cache,
 		userRepository:    userRepository,
 		userMFARepository: userMFARepository,
+		emailService:      emailService,
+		smsService:        smsService,
 	}
 }
 
@@ -69,7 +76,6 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		return nil, errors.New("invalid password")
 	}
 
-	referenceID := uuid.New().String()
 	mfaMetadata := domain.MFAMetadata{
 		UserID: user.ID,
 	}
@@ -81,7 +87,7 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 	if h.isRequiredMFA() {
 		response := &domain.LoginResponse{
 			RequiredMFA: true,
-			ReferenceID: referenceID,
+			ReferenceID: requestID,
 		}
 
 		return response, nil
@@ -168,7 +174,8 @@ func (h *LoginController) SendLoginEmailCode(ctx context.Context, req *domain.Se
 		return nil, err
 	}
 
-	fmt.Printf("Email verification code: %s\n", code)
+	msg := fmt.Sprintf("Your login verification code is %s", code)
+	h.emailService.SendEmail(ctx, userMfa.Metadata.Email, "Login Verification Code", msg)
 	return &domain.SendLoginEmailCodeResponse{}, nil
 }
 
@@ -225,7 +232,8 @@ func (h *LoginController) SendLoginPhoneCode(ctx context.Context, req *domain.Se
 		return nil, err
 	}
 
-	fmt.Printf("Phone login code: %s\n", code)
+	msg := fmt.Sprintf("Your login verification code is %s", code)
+	h.smsService.SendSMS(ctx, userMfa.Metadata.Phone, msg)
 	return &domain.SendLoginPhoneCodeResponse{}, nil
 }
 

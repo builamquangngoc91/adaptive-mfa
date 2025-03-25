@@ -78,51 +78,56 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	newHandler := func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, common.ContextKeyParams, req.URL.Query())
-		ctx = context.WithValue(ctx, common.ContextKeyHeaders, req.Header)
+	if handler, ok := handlerWithMiddlewares.Handler.(http.Handler); ok {
+		Chain(handler.ServeHTTP, handlerWithMiddlewares.Middlewares...)(w, req)
+	} else {
+		newHandler := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, common.ContextKeyParams, req.URL.Query())
+			ctx = context.WithValue(ctx, common.ContextKeyHeaders, req.Header)
 
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			handler := handlerWithMiddlewares.Handler
+
+			handlerValue := reflect.ValueOf(handler)
+			handlerType := reflect.TypeOf(handler)
+
+			if handlerType.NumIn() != 2 {
+				http.Error(w, "handler must have 2 arguments", http.StatusInternalServerError)
+				return
+			}
+
+			reqType := handlerType.In(1)
+			req := reflect.New(reqType).Interface()
+			if err := json.Unmarshal(body, req); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			results := handlerValue.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(req).Elem()})
+			if len(results) != 2 {
+				http.Error(w, "handler must return 2 values", http.StatusInternalServerError)
+				return
+			}
+
+			resp := results[0].Interface()
+			respErr := results[1].Interface()
+			if _err, ok := respErr.(error); ok && respErr != nil {
+				w.Write([]byte(_err.Error()))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			json.NewEncoder(w).Encode(resp)
+			w.WriteHeader(http.StatusOK)
 		}
-
-		handler := handlerWithMiddlewares.Handler
-
-		handlerValue := reflect.ValueOf(handler)
-		handlerType := reflect.TypeOf(handler)
-
-		if handlerType.NumIn() != 2 {
-			http.Error(w, "handler must have 2 arguments", http.StatusInternalServerError)
-			return
-		}
-
-		reqType := handlerType.In(1)
-		req := reflect.New(reqType).Interface()
-		if err := json.Unmarshal(body, req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		results := handlerValue.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(req).Elem()})
-		if len(results) != 2 {
-			http.Error(w, "handler must return 2 values", http.StatusInternalServerError)
-			return
-		}
-
-		resp := results[0].Interface()
-		respErr := results[1].Interface()
-		if _err, ok := respErr.(error); ok {
-			http.Error(w, _err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		json.NewEncoder(w).Encode(resp)
-		w.WriteHeader(http.StatusOK)
+		Chain(newHandler, handlerWithMiddlewares.Middlewares...)(w, req)
 	}
-	Chain(newHandler, handlerWithMiddlewares.Middlewares...)(w, req)
 }
 
 func (r *Router) Use(middleware Middleware) {
