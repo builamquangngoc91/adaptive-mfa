@@ -74,7 +74,7 @@ func main() {
 			requiredAuthGroup.Post("/verify-email-verification", userVerificationController.VerifyEmailVerification)
 			requiredAuthGroup.Post("/send-phone-verification", userVerificationController.SendPhoneVerification)
 			requiredAuthGroup.Post("/verify-phone-verification", userVerificationController.VerifyPhoneVerification)
-			requiredAuthGroup.Get("/add-totp-method", totpController.AddTOTPMethod)
+			requiredAuthGroup.Post("/add-totp-method", totpController.AddTOTPMethod)
 			requiredAuthGroup.Delete("/delete-totp-method", totpController.DeleteTOTPMethod)
 			requiredAuthGroup.Get("/list-totp-methods", totpController.ListTOTPMethods)
 		}
