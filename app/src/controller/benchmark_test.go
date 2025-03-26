@@ -35,7 +35,7 @@ func callApiRegister(b *testing.B, fullname, email, password string) {
 	}
 
 	// Create a new HTTP POST request
-	req, err := http.NewRequest("POST", "http://localhost:8083/v1/auth/register", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest("POST", "http://amfa-test:8083/v1/auth/register", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		b.Fatalf("Failed to create request: %v", err)
 	}
@@ -72,7 +72,7 @@ func callApiLogin(b *testing.B, email, password string) {
 	}
 
 	// Create a new HTTP POST request
-	req, err := http.NewRequest("POST", "http://localhost:8083/v1/auth/login", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest("POST", "http://amfa-test:8083/v1/auth/login", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		b.Fatalf("Failed to create request: %v", err)
 	}

@@ -35,3 +35,7 @@ migrate-down-test:
 
 mockgen:
 	$(DOCKER_RUN) go generate ./...
+
+benchmark:
+	$(DOCKER_RUN_TEST) go test -bench=. -benchmem -cpu=1,2,4 ./...
+
