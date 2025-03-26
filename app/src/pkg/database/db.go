@@ -163,11 +163,22 @@ func (d *Database) logQuery(ctx context.Context, query string, args ...interface
 
 func (d *Database) parseSQL(query string, args ...interface{}) string {
 	for i, arg := range args {
+		fmt.Println(reflect.TypeOf(arg).Kind())
 		if reflect.TypeOf(arg).Kind() == reflect.Pointer {
-			arg = reflect.ValueOf(arg).Elem().Interface()
+			if reflect.ValueOf(arg).IsNil() {
+				arg = nil
+			} else {
+				arg = reflect.ValueOf(arg).Elem().Interface()
+			}
 		}
 
 		statementSymbol := fmt.Sprintf("$%d", i+1)
+
+		if arg == nil {
+			query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			continue
+		}
+
 		switch v := arg.(type) {
 		case string:
 			query = strings.ReplaceAll(query, statementSymbol, v)
@@ -185,6 +196,54 @@ func (d *Database) parseSQL(query string, args ...interface{}) string {
 			query = strings.ReplaceAll(query, statementSymbol, string(v))
 		case byte:
 			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v))
+		case sql.NullString:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, v.String)
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
+		case sql.NullInt16:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v.Int16))
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
+		case sql.NullInt64:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v.Int64))
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
+		case sql.NullInt32:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v.Int32))
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
+		case sql.NullFloat64:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%f", v.Float64))
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
+		case sql.NullBool:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%t", v.Bool))
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
+		case sql.NullByte:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v.Byte))
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
+		case sql.NullTime:
+			if v.Valid {
+				query = strings.ReplaceAll(query, statementSymbol, v.Time.Format("2006-01-02 15:04:05"))
+			} else {
+				query = strings.ReplaceAll(query, statementSymbol, "NULL")
+			}
 		default:
 			query = strings.ReplaceAll(query, statementSymbol, "NULL")
 		}

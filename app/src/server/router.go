@@ -153,8 +153,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				With("response", resp).
 				Info("Handler response")
 
-			json.NewEncoder(w).Encode(resp)
 			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(resp)
 		}
 		Chain(newHandler, handlerWithMiddlewares.Middlewares...)(w, req)
 	}

@@ -28,7 +28,6 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 			request_id, 
 			reference_id, 
 			user_id, 
-			username, 
 			ip_address, 
 			user_agent, 
 			device_id, 
@@ -36,16 +35,16 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 			login_type, 
 			login_status,
 			is_impersonation,
+			attempts,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
 	`
 	result, err := r.db.ExecTx(ctx, tx, command,
 		userLoginLog.ID,
 		userLoginLog.RequestID,
 		userLoginLog.ReferenceID,
 		userLoginLog.UserID,
-		userLoginLog.Username,
 		userLoginLog.IPAddress,
 		userLoginLog.UserAgent,
 		userLoginLog.DeviceID,
@@ -53,9 +52,10 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 		userLoginLog.LoginType,
 		userLoginLog.LoginStatus,
 		userLoginLog.IsImpersonation,
-		userLoginLog.CreatedAt,
+		userLoginLog.Attempts,
 	)
 	if err != nil {
+		fmt.Println(err)
 		return fmt.Errorf("failed to create user login log: %w", err)
 	}
 

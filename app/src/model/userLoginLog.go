@@ -2,6 +2,9 @@ package model
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -15,7 +18,7 @@ type UserLoginLog struct {
 	IPAddress       sql.NullString
 	UserAgent       sql.NullString
 	DeviceID        sql.NullString
-	Metadata        map[string]interface{}
+	Metadata        *UserLoginMetadata
 	LoginType       string
 	LoginStatus     sql.NullString
 	IsImpersonation bool
@@ -40,3 +43,19 @@ const (
 	UserLoginStatusSuccess UserLoginStatus = "success"
 	UserLoginStatusFailed  UserLoginStatus = "failed"
 )
+
+type UserLoginMetadata struct {
+	Username string `json:"username,omitempty"`
+}
+
+func (m *UserLoginMetadata) Value() (driver.Value, error) {
+	return json.Marshal(m)
+}
+
+func (m *UserLoginMetadata) Scan(value interface{}) error {
+	metadata, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(metadata, m)
+}
