@@ -69,7 +69,6 @@ func main() {
 	hackedController := controller.NewHackedController(cfg, cache)
 
 	v1Group := s.Router.Group("/v1")
-	v1Group.Use(middleware.LoggerMiddleware)
 	v1Group.Use(middleware.RequestIDMiddleware)
 	{
 		authGroup := v1Group.Group("/auth")

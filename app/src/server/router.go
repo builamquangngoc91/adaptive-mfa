@@ -1,8 +1,6 @@
 package server
 
 import (
-	"adaptive-mfa/domain"
-	"adaptive-mfa/pkg/common"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +8,10 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+
+	"adaptive-mfa/domain"
+	"adaptive-mfa/pkg/common"
+	"adaptive-mfa/pkg/logger"
 )
 
 type Handler func(http.ResponseWriter, *http.Request)
@@ -104,13 +106,22 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 
 			reqType := handlerType.In(1)
-			req := reflect.New(reqType).Interface()
-			if err := json.Unmarshal(body, req); err != nil {
+			newReq := reflect.New(reqType).Interface()
+			if err := json.Unmarshal(body, newReq); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			results := handlerValue.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(req).Elem()})
+			logger.NewLogger().
+				WithContext(ctx).
+				With("method", req.Method).
+				With("path", req.URL.Path).
+				With("body", string(body)).
+				With("headers", req.Header).
+				With("params", req.URL.Query()).
+				Info("Calling handler")
+
+			results := handlerValue.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(newReq).Elem()})
 			if len(results) != 2 {
 				http.Error(w, "handler must return 2 values", http.StatusInternalServerError)
 				return
@@ -119,6 +130,12 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			resp := results[0].Interface()
 			respErr := results[1].Interface()
 			if _err, ok := respErr.(error); ok && respErr != nil {
+				logger.NewLogger().
+					WithContext(ctx).
+					With("method", req.Method).
+					With("path", req.URL.Path).
+					With("error", _err.Error()).
+					Error("Handler error")
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(&domain.Error{
 					Message:   _err.Error(),
@@ -126,6 +143,13 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				})
 				return
 			}
+
+			logger.NewLogger().
+				WithContext(ctx).
+				With("method", req.Method).
+				With("path", req.URL.Path).
+				With("response", resp).
+				Info("Handler response")
 
 			json.NewEncoder(w).Encode(resp)
 			w.WriteHeader(http.StatusOK)

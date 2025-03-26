@@ -1,6 +1,7 @@
 package email
 
 import (
+	"adaptive-mfa/pkg/logger"
 	"adaptive-mfa/pkg/monitor"
 	"context"
 	"fmt"
@@ -18,7 +19,12 @@ func NewEmail() IEmail {
 }
 
 func (e *Email) SendEmail(ctx context.Context, email string, subject string, body string) error {
-	fmt.Printf("Send email to %s with subject %s and body %s\n", email, subject, body)
+	logger.NewLogger().
+		WithContext(ctx).
+		With("email", email).
+		With("subject", subject).
+		With("body", body).
+		Info("Send email")
 	monitor.EmailSendCounter.WithLabelValues(email).Inc()
 	return nil
 }

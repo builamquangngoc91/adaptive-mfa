@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"adaptive-mfa/pkg/logger"
 	"context"
 	"encoding/json"
 	"errors"
@@ -44,6 +45,10 @@ func New(cfg *CacheConfig) (ICache, error) {
 }
 
 func (r *Cache) Get(ctx context.Context, key string) (string, error) {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("key", key).
+		Info("Getting value from cache")
 	result, err := r.rd.Get(ctx, key).Result()
 	if err != nil {
 		return "", err
@@ -52,6 +57,11 @@ func (r *Cache) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (r *Cache) GetJSON(ctx context.Context, key string, value interface{}) error {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("key", key).
+		With("value", value).
+		Info("Getting value from cache")
 	result, err := r.rd.Get(ctx, key).Result()
 	if err != nil {
 		return err
@@ -60,10 +70,22 @@ func (r *Cache) GetJSON(ctx context.Context, key string, value interface{}) erro
 }
 
 func (r *Cache) Set(ctx context.Context, key string, value string, expiration *time.Duration) error {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("key", key).
+		With("value", value).
+		With("expiration", expiration).
+		Info("Setting value in cache")
 	return r.rd.Set(ctx, key, value, *expiration).Err()
 }
 
 func (r *Cache) SetJSON(ctx context.Context, key string, value interface{}, expiration *time.Duration) error {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("key", key).
+		With("value", value).
+		With("expiration", expiration).
+		Info("Setting value in cache")
 	json, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -72,10 +94,18 @@ func (r *Cache) SetJSON(ctx context.Context, key string, value interface{}, expi
 }
 
 func (r *Cache) Del(ctx context.Context, key string) error {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("key", key).
+		Info("Deleting value from cache")
 	return r.rd.Del(ctx, key).Err()
 }
 
 func (r *Cache) GetAndDel(ctx context.Context, key string) (string, error) {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("key", key).
+		Info("Getting and deleting value from cache")
 	result, err := r.rd.GetDel(ctx, key).Result()
 	if err != nil {
 		return "", err

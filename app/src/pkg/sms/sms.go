@@ -1,9 +1,9 @@
 package sms
 
 import (
+	"adaptive-mfa/pkg/logger"
 	"adaptive-mfa/pkg/monitor"
 	"context"
-	"fmt"
 )
 
 type ISMS interface {
@@ -22,7 +22,11 @@ func (s *SMS) Ping(ctx context.Context) error {
 }
 
 func (s *SMS) SendSMS(ctx context.Context, phone string, message string) error {
-	fmt.Printf("Send sms to %s with message %s\n", phone, message)
+	logger.NewLogger().
+		WithContext(ctx).
+		With("phone", phone).
+		With("message", message).
+		Info("Send sms")
 	monitor.SMSSendCounter.WithLabelValues(phone).Inc()
 	return nil
 }

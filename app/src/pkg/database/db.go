@@ -1,9 +1,12 @@
 package database
 
 import (
+	"adaptive-mfa/pkg/logger"
 	"context"
 	"database/sql"
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 )
 
@@ -70,14 +73,27 @@ func (d *Database) StartTx(ctx context.Context, fn TxFunc, opts *sql.TxOptions) 
 	if err != nil {
 		return err
 	}
+	logger.NewLogger().
+		WithContext(ctx).
+		With("tx", tx).
+		Info("Starting transaction")
 
 	if err := fn(ctx, tx); err != nil {
+		logger.NewLogger().
+			WithContext(ctx).
+			With("tx", tx).
+			With("error", err).
+			Error("Rolling back transaction")
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			return rollbackErr
 		}
 		return err
 	}
 
+	logger.NewLogger().
+		WithContext(ctx).
+		With("tx", tx).
+		Info("Committing transaction")
 	return tx.Commit()
 }
 
@@ -90,14 +106,17 @@ func (d *Database) Close(ctx context.Context) error {
 }
 
 func (d *Database) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	d.logQuery(ctx, query, args...)
 	return d.db.ExecContext(ctx, query, args...)
 }
 
 func (d *Database) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	d.logQuery(ctx, query, args...)
 	return d.db.QueryContext(ctx, query, args...)
 }
 
 func (d *Database) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	d.logQuery(ctx, query, args...)
 	return d.db.QueryRowContext(ctx, query, args...)
 }
 
@@ -131,4 +150,44 @@ func (d *Database) PrepareTx(ctx context.Context, tx *sql.Tx, query string) (*sq
 		return d.Prepare(ctx, query)
 	}
 	return tx.PrepareContext(ctx, query)
+}
+
+func (d *Database) logQuery(ctx context.Context, query string, args ...interface{}) {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("query", query).
+		With("args", args).
+		With("query_parsed", d.parseSQL(query, args...)).
+		Info("Executing query")
+}
+
+func (d *Database) parseSQL(query string, args ...interface{}) string {
+	for i, arg := range args {
+		if reflect.TypeOf(arg).Kind() == reflect.Pointer {
+			arg = reflect.ValueOf(arg).Elem().Interface()
+		}
+
+		statementSymbol := fmt.Sprintf("$%d", i+1)
+		switch v := arg.(type) {
+		case string:
+			query = strings.ReplaceAll(query, statementSymbol, v)
+		case int, int8, int16, int32, int64:
+			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v))
+		case float64:
+			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%f", v))
+		case time.Time:
+			query = strings.ReplaceAll(query, statementSymbol, v.Format("2006-01-02 15:04:05"))
+		case bool:
+			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%t", v))
+		case nil:
+			query = strings.ReplaceAll(query, statementSymbol, "NULL")
+		case []byte:
+			query = strings.ReplaceAll(query, statementSymbol, string(v))
+		case byte:
+			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v))
+		default:
+			query = strings.ReplaceAll(query, statementSymbol, "NULL")
+		}
+	}
+	return query
 }
