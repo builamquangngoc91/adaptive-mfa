@@ -4,6 +4,7 @@ import (
 	"adaptive-mfa/domain"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/common"
+	appError "adaptive-mfa/pkg/error"
 	"context"
 	"crypto/sha1"
 	"errors"
@@ -11,7 +12,7 @@ import (
 
 //go:generate mockgen -source=logout.go -destination=./mock/logout.go -package=mock
 type ILogoutController interface {
-	Logout(context.Context, *domain.LogoutRequest) (*domain.LogoutResponse, error)
+	Logout(context.Context) (*domain.LogoutResponse, error)
 }
 
 type LogoutController struct {
@@ -24,15 +25,18 @@ func NewLogoutController(cache cache.ICache) ILogoutController {
 	}
 }
 
-func (h *LogoutController) Logout(ctx context.Context, req *domain.LogoutRequest) (*domain.LogoutResponse, error) {
+func (h *LogoutController) Logout(ctx context.Context) (*domain.LogoutResponse, error) {
 	token := common.GetHeaders(ctx).Get("Authorization")
 	if token == "" {
-		return nil, errors.New("Unauthorized")
+		return nil, appError.ErrorUnauthorized
 	}
 
 	sha1Token := string(sha1.New().Sum([]byte(token)))
 	if err := h.cache.Del(ctx, cache.GetTokenKey(sha1Token)); err != nil {
-		return nil, err
+		if errors.Is(err, cache.Nil) {
+			return nil, appError.ErrorUnauthorized
+		}
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	return &domain.LogoutResponse{}, nil

@@ -16,6 +16,7 @@ const (
 	CodeExceededMFACodeAttempts   Code = 104000006
 	CodeMFAForPhoneNotFound       Code = 104000007
 	CodeMFAForEmailNotFound       Code = 104000008
+	CodeUnauthorized              Code = 104010000
 	CodeInternalServerError       Code = 105000001
 	CodeCacheError                Code = 105000002
 	CodeSendSMSFailed             Code = 105000003
@@ -69,6 +70,10 @@ var mapCodeToMessage = map[Code]responseInfo{
 		Message:    "totp method already exists",
 		StatusCode: http.StatusBadRequest,
 	},
+	CodeUnauthorized: {
+		Message:    "unauthorized",
+		StatusCode: http.StatusUnauthorized,
+	},
 }
 
 type AppError struct {
@@ -118,6 +123,7 @@ var (
 	ErrorExceededMFACodeAttempts   AppError = AppErrorFromCode(CodeExceededMFACodeAttempts)
 	ErrorMFAForPhoneNotFound       AppError = AppErrorFromCode(CodeMFAForPhoneNotFound)
 	ErrorMFAForEmailNotFound       AppError = AppErrorFromCode(CodeMFAForEmailNotFound)
+	ErrorUnauthorized              AppError = AppErrorFromCode(CodeUnauthorized)
 	ErrorInternalServerError       AppError = AppErrorFromCode(CodeInternalServerError)
 	ErrorCacheError                AppError = AppErrorFromCode(CodeCacheError)
 	ErrorSendSMSFailed             AppError = AppErrorFromCode(CodeSendSMSFailed)

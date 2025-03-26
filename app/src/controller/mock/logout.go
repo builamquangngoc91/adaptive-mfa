@@ -40,16 +40,16 @@ func (m *MockILogoutController) EXPECT() *MockILogoutControllerMockRecorder {
 }
 
 // Logout mocks base method.
-func (m *MockILogoutController) Logout(arg0 context.Context, arg1 *domain.LogoutRequest) (*domain.LogoutResponse, error) {
+func (m *MockILogoutController) Logout(arg0 context.Context) (*domain.LogoutResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Logout", arg0, arg1)
+	ret := m.ctrl.Call(m, "Logout", arg0)
 	ret0, _ := ret[0].(*domain.LogoutResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Logout indicates an expected call of Logout.
-func (mr *MockILogoutControllerMockRecorder) Logout(arg0, arg1 any) *gomock.Call {
+func (mr *MockILogoutControllerMockRecorder) Logout(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockILogoutController)(nil).Logout), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockILogoutController)(nil).Logout), arg0)
 }
