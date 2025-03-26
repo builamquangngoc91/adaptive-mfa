@@ -1,0 +1,1 @@
+CREATE DATABASE amfa_db_test;
