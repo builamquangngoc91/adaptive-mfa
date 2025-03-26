@@ -11,6 +11,7 @@ require (
 	github.com/prometheus/client_golang v1.21.1
 	github.com/redis/go-redis/v9 v9.7.1
 	github.com/thanhpk/randstr v1.0.6
+	go.uber.org/mock v0.5.0
 	golang.org/x/crypto v0.31.0
 )
 

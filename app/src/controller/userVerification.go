@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate mockgen -source=userVerification.go -destination=./mock/userVerification.go -package=mock
 type IUserVerificationController interface {
 	SendEmailVerification(ctx context.Context, req *domain.SendEmailVerificationRequest) (*domain.SendEmailVerificationResponse, error)
 	VerifyEmailVerification(ctx context.Context, req *domain.VerifyEmailVerificationRequest) (*domain.VerifyEmailVerificationResponse, error)

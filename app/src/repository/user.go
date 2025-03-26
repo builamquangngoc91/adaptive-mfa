@@ -10,6 +10,7 @@ import (
 	"adaptive-mfa/pkg/database"
 )
 
+//go:generate mockgen -source=user.go -destination=./mock/user.go -package=mock
 type IUserRepository interface {
 	Create(context.Context, *sql.Tx, *model.User) error
 	GetByUsername(context.Context, *sql.Tx, string) (*model.User, error)

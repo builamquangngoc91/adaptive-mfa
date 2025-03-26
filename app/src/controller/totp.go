@@ -18,6 +18,7 @@ import (
 	"github.com/thanhpk/randstr"
 )
 
+//go:generate mockgen -source=totp.go -destination=./mock/totp.go -package=mock
 type ITOTPController interface {
 	AddTOTPMethod(ctx context.Context, req *domain.AddTOTPMethodRequest) (*domain.AddTOTPMethodResponse, error)
 	DeleteTOTPMethod(ctx context.Context) (*domain.DeleteTOTPMethodResponse, error)

@@ -20,3 +20,6 @@ migrate-up:
 	$(DOCKER_RUN) $(MIGRATE) -database $(DSN) up 
 migrate-down:
 	$(DOCKER_RUN) $(MIGRATE) -database $(DSN) down
+
+mockgen:
+	$(DOCKER_RUN) go generate ./...

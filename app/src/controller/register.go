@@ -13,6 +13,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+//go:generate mockgen -source=register.go -destination=./mock/register.go -package=mock
 type IRegisterController interface {
 	Register(context.Context, *domain.RegisterRequest) (*domain.RegisterResponse, error)
 }

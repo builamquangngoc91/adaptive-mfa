@@ -9,6 +9,7 @@ import (
 	"errors"
 )
 
+//go:generate mockgen -source=logout.go -destination=./mock/logout.go -package=mock
 type ILogoutController interface {
 	Logout(context.Context, *domain.LogoutRequest) (*domain.LogoutResponse, error)
 }

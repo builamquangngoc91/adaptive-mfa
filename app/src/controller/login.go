@@ -28,6 +28,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+//go:generate mockgen -source=login.go -destination=./mock/login.go -package=mock
 type ILoginController interface {
 	Login(context.Context, *domain.LoginRequest) (*domain.LoginResponse, error)
 	LoginWithMFA(context.Context, *domain.LoginWithMFARequest) (*domain.LoginWithMFAResponse, error)
