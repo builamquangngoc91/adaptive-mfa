@@ -44,6 +44,7 @@ func main() {
 
 	userRepository := repository.NewUserRepository(db)
 	userMFARepository := repository.NewUserMFARepository(db)
+	userLoginLogRepository := repository.NewUserLoginLogRepository(db)
 
 	s := server.NewServer(8082)
 	s.Router.Get("/health", func(ctx context.Context, req any) (any, error) {
@@ -63,7 +64,7 @@ func main() {
 	emailService := email.NewEmail()
 	smsService := sms.NewSMS()
 	registerController := controller.NewRegisterController(cache, userRepository)
-	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository, emailService, smsService)
+	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository, userLoginLogRepository, emailService, smsService)
 	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository, emailService, smsService)
 	logoutController := controller.NewLogoutController(cache)
 	totpController := controller.NewTOTPController(db, userMFARepository, cache)

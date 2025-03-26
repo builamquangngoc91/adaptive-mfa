@@ -14,12 +14,16 @@ import (
 	"adaptive-mfa/model"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/common"
+	"adaptive-mfa/pkg/database"
 	"adaptive-mfa/pkg/email"
+	appError "adaptive-mfa/pkg/error"
+	"adaptive-mfa/pkg/logger"
 	"adaptive-mfa/pkg/ptr"
 	"adaptive-mfa/pkg/sms"
 	"adaptive-mfa/repository"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/thanhpk/randstr"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -34,12 +38,13 @@ type ILoginController interface {
 }
 
 type LoginController struct {
-	cfg               *config.Config
-	cache             cache.ICache
-	userRepository    repository.IUserRepository
-	userMFARepository repository.IUserMFARepository
-	emailService      email.IEmail
-	smsService        sms.ISMS
+	cfg                    *config.Config
+	cache                  cache.ICache
+	userRepository         repository.IUserRepository
+	userMFARepository      repository.IUserMFARepository
+	userLoginLogRepository repository.IUserLoginLogRepository
+	emailService           email.IEmail
+	smsService             sms.ISMS
 }
 
 func NewLoginController(
@@ -47,53 +52,98 @@ func NewLoginController(
 	cache cache.ICache,
 	userRepository repository.IUserRepository,
 	userMFARepository repository.IUserMFARepository,
+	userLoginLogRepository repository.IUserLoginLogRepository,
 	emailService email.IEmail,
 	smsService sms.ISMS,
 ) ILoginController {
 	return &LoginController{
-		cfg:               cfg,
-		cache:             cache,
-		userRepository:    userRepository,
-		userMFARepository: userMFARepository,
-		emailService:      emailService,
-		smsService:        smsService,
+		cfg:                    cfg,
+		cache:                  cache,
+		userRepository:         userRepository,
+		userMFARepository:      userMFARepository,
+		userLoginLogRepository: userLoginLogRepository,
+		emailService:           emailService,
+		smsService:             smsService,
 	}
 }
 
-func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (*domain.LoginResponse, error) {
-	requestID := common.GetRequestID(ctx)
+func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (_ *domain.LoginResponse, err error) {
+	var (
+		user        *model.User
+		requiredMFA bool
+	)
 
-	user, err := h.userRepository.GetByUsername(ctx, nil, req.Username)
+	defer func() {
+		var userID sql.NullString
+		if user != nil {
+			userID = database.NewNullString(user.ID)
+		}
+		userLoginLog := &model.UserLoginLog{
+			ID:        uuid.New().String(),
+			RequestID: common.GetRequestID(ctx),
+			UserID:    userID,
+			IPAddress: database.NewNullString(common.GetIPAddress(ctx)),
+			UserAgent: database.NewNullString(common.GetUserAgent(ctx)),
+			DeviceID:  database.NewNullString(common.GetDeviceID(ctx)),
+			LoginType: string(model.UserLoginTypeBasicAuth),
+			CreatedAt: time.Now(),
+		}
+
+		switch err {
+		case appError.ErrorUsernameOrPasswordInvalid:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusFailed))
+		case nil:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusSuccess))
+		default:
+			// no-op
+			return
+		}
+
+		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+			logger.NewLogger().
+				WithContext(ctx).
+				With("error", err).
+				Error("Failed to create user login log")
+		}
+	}()
+
+	requestID := common.GetRequestID(ctx)
+	user, err = h.userRepository.GetByUsername(ctx, nil, req.Username)
 	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, appError.ErrorUsernameOrPasswordInvalid
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.HashPassword), []byte(req.Password)); err != nil {
-		return nil, errors.New("invalid password")
+	err = bcrypt.CompareHashAndPassword([]byte(user.HashPassword), []byte(req.Password))
+	if err != nil {
+		return nil, appError.ErrorUsernameOrPasswordInvalid
 	}
 
 	mfaMetadata := domain.MFAMetadata{
-		UserID: user.ID,
+		UserID:   user.ID,
+		Username: user.Username,
 	}
 
-	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(requestID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
-		return nil, err
+	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(requestID), mfaMetadata, ptr.ToPtr(time.Minute*5))
+	if err != nil {
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	if h.isRequiredMFA() {
+		requiredMFA = true
 		return &domain.LoginResponse{
-			RequiredMFA: true,
+			RequiredMFA: requiredMFA,
 			ReferenceID: requestID,
 		}, nil
 	}
 
-	token, err := h.generateToken(ctx, user)
+	var token string
+	token, err = h.generateToken(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	return &domain.LoginResponse{
@@ -101,32 +151,77 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 	}, nil
 }
 
-func (h *LoginController) LoginWithMFA(ctx context.Context, req *domain.LoginWithMFARequest) (*domain.LoginResponse, error) {
-	var metadata domain.MFAMetadata
-	if err := h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &metadata); err != nil {
-		return nil, err
+func (h *LoginController) LoginWithMFA(ctx context.Context, req *domain.LoginWithMFARequest) (_ *domain.LoginResponse, err error) {
+	var (
+		metadata domain.MFAMetadata
+		user     *model.User
+		token    string
+	)
+
+	defer func() {
+		var userID sql.NullString
+		if user != nil {
+			userID = database.NewNullString(user.ID)
+		}
+		userLoginLog := &model.UserLoginLog{
+			ID:          uuid.New().String(),
+			RequestID:   common.GetRequestID(ctx),
+			ReferenceID: database.NewNullString(req.ReferenceID),
+			UserID:      userID,
+			IPAddress:   database.NewNullString(common.GetIPAddress(ctx)),
+			UserAgent:   database.NewNullString(common.GetUserAgent(ctx)),
+			DeviceID:    database.NewNullString(common.GetDeviceID(ctx)),
+			LoginType:   string(metadata.Type),
+			CreatedAt:   time.Now(),
+		}
+
+		switch err {
+		case appError.ErrorInvalidMFAPrivateKey:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusFailed))
+		case nil:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusSuccess))
+		default:
+			// no-op
+			return
+		}
+
+		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+			logger.NewLogger().
+				WithContext(ctx).
+				With("error", err).
+				Error("Failed to create user login log")
+		}
+	}()
+
+	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &metadata)
+	if err != nil {
+		if errors.Is(err, cache.Nil) {
+			return nil, appError.ErrorInvalidMFAReferenceID
+		}
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	if metadata.PrivateKey != req.PrivateKey {
-		return nil, errors.New("invalid private key")
+		return nil, appError.ErrorInvalidMFAPrivateKey
 	}
 
-	user, err := h.userRepository.GetByID(ctx, nil, metadata.UserID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+	user, err = h.userRepository.GetByID(ctx, nil, metadata.UserID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, appError.WithAppError(errors.New("user not found"), appError.CodeInternalServerError)
 	}
 
-	if err := h.cache.Del(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID)); err != nil {
-		return nil, err
-	}
-
-	token, err := h.generateToken(ctx, user)
+	err = h.cache.Del(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID))
 	if err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
+	}
+
+	token, err = h.generateToken(ctx, user)
+	if err != nil {
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	return &domain.LoginResponse{
@@ -155,117 +250,182 @@ func (h *LoginController) generateToken(ctx context.Context, user *model.User) (
 func (h *LoginController) SendLoginEmailCode(ctx context.Context, req *domain.SendLoginEmailCodeRequest) (*domain.SendLoginEmailCodeResponse, error) {
 	var mfaMetadata domain.MFAMetadata
 	if err := h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
-		return nil, err
+		if errors.Is(err, cache.Nil) {
+			return nil, appError.ErrorInvalidMFAReferenceID
+		}
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	userMfa, err := h.userMFARepository.GetByUserIDAndMFAType(ctx, nil, mfaMetadata.UserID, string(model.UserMFATypeEmail))
 	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if userMfa == nil {
-		return nil, errors.New("MFA for email not found")
+		return nil, appError.ErrorMFAForEmailNotFound
 	}
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
-	if err := h.cache.Set(ctx, cache.GetEmailLoginCodeKey(mfaMetadata.UserID), code, ptr.ToPtr(time.Minute*5)); err != nil {
-		return nil, err
+	mfaMetadata.Code = code
+	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	msg := fmt.Sprintf("Your login verification code is %s", code)
-	h.emailService.SendEmail(ctx, userMfa.Metadata.Email, "Login Verification Code", msg)
+	if err := h.emailService.SendEmail(ctx, userMfa.Metadata.Email, "Login Verification Code", msg); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeSendEmailFailed)
+	}
 	return &domain.SendLoginEmailCodeResponse{}, nil
 }
 
-func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.VerifyLoginEmailCodeRequest) (*domain.VerifyLoginEmailCodeResponse, error) {
+func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.VerifyLoginEmailCodeRequest) (_ *domain.VerifyLoginEmailCodeResponse, err error) {
 	var mfaMetadata domain.MFAMetadata
-	if err := h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
-		return nil, err
-	}
 
-	code, err := h.cache.Get(ctx, cache.GetEmailLoginCodeKey(mfaMetadata.UserID))
+	defer func() {
+		userLoginLog := &model.UserLoginLog{
+			ID:          uuid.New().String(),
+			RequestID:   common.GetRequestID(ctx),
+			ReferenceID: database.NewNullString(req.ReferenceID),
+			UserID:      database.NewNullString(mfaMetadata.UserID),
+			IPAddress:   database.NewNullString(common.GetIPAddress(ctx)),
+			UserAgent:   database.NewNullString(common.GetUserAgent(ctx)),
+			DeviceID:    database.NewNullString(common.GetDeviceID(ctx)),
+			LoginType:   string(model.UserLoginTypeMFAMail),
+			CreatedAt:   time.Now(),
+		}
+
+		switch err {
+		case appError.ErrorInvalidMFACode:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusFailed))
+		case nil:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusSuccess))
+		default:
+			// no-op
+			return
+		}
+
+		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+			logger.NewLogger().
+				WithContext(ctx).
+				With("error", err).
+				Error("Failed to create user login log")
+		}
+	}()
+
+	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, cache.Nil) {
+			return nil, appError.ErrorInvalidMFAReferenceID
+		}
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	if code != req.Code {
-		return nil, errors.New("invalid code")
+	if mfaMetadata.Code != req.Code {
+		return nil, appError.ErrorInvalidMFACode
 	}
 
-	mfaMetadata.Type = domain.UserMFATypeEmail
+	mfaMetadata.Type = domain.UserLoginTypeMFAMail
 	mfaMetadata.PrivateKey = randstr.Hex(16)
-	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
-		return nil, err
+	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5))
+	if err != nil {
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	if err := h.cache.Del(ctx, cache.GetEmailLoginCodeKey(mfaMetadata.UserID)); err != nil {
-		return nil, err
-	}
-
-	response := &domain.VerifyLoginEmailCodeResponse{
+	return &domain.VerifyLoginEmailCodeResponse{
 		ReferenceID: req.ReferenceID,
 		PrivateKey:  mfaMetadata.PrivateKey,
-	}
-
-	return response, nil
+	}, nil
 }
 
-func (h *LoginController) SendLoginPhoneCode(ctx context.Context, req *domain.SendLoginPhoneCodeRequest) (*domain.SendLoginPhoneCodeResponse, error) {
+func (h *LoginController) SendLoginPhoneCode(ctx context.Context, req *domain.SendLoginPhoneCodeRequest) (_ *domain.SendLoginPhoneCodeResponse, err error) {
 	var mfaMetadata domain.MFAMetadata
-	if err := h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
-		return nil, err
+	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata)
+	if err != nil {
+		if errors.Is(err, cache.Nil) {
+			return nil, appError.ErrorInvalidMFAReferenceID
+		}
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	userMfa, err := h.userMFARepository.GetByUserIDAndMFAType(ctx, nil, mfaMetadata.UserID, string(model.UserMFATypeEmail))
 	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if userMfa == nil {
-		return nil, errors.New("MFA for phone not found")
+		return nil, appError.ErrorMFAForPhoneNotFound
 	}
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
-	if err := h.cache.Set(ctx, cache.GetPhoneLoginCodeKey(mfaMetadata.UserID), code, ptr.ToPtr(time.Minute*5)); err != nil {
-		return nil, err
+	mfaMetadata.Code = code
+	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	msg := fmt.Sprintf("Your login verification code is %s", code)
-	h.smsService.SendSMS(ctx, userMfa.Metadata.Phone, msg)
+	if err := h.smsService.SendSMS(ctx, userMfa.Metadata.Phone, msg); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeSendSMSFailed)
+	}
 	return &domain.SendLoginPhoneCodeResponse{}, nil
 }
 
-func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.VerifyLoginPhoneCodeRequest) (*domain.VerifyLoginPhoneCodeResponse, error) {
+func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.VerifyLoginPhoneCodeRequest) (_ *domain.VerifyLoginPhoneCodeResponse, err error) {
 	var mfaMetadata domain.MFAMetadata
-	if err := h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
-		return nil, err
+
+	defer func() {
+		userLoginLog := &model.UserLoginLog{
+			ID:          uuid.New().String(),
+			RequestID:   common.GetRequestID(ctx),
+			ReferenceID: database.NewNullString(req.ReferenceID),
+			UserID:      database.NewNullString(mfaMetadata.UserID),
+			IPAddress:   database.NewNullString(common.GetIPAddress(ctx)),
+			UserAgent:   database.NewNullString(common.GetUserAgent(ctx)),
+			DeviceID:    database.NewNullString(common.GetDeviceID(ctx)),
+			LoginType:   string(model.UserLoginTypeMFASMS),
+			CreatedAt:   time.Now(),
+		}
+
+		switch err {
+		case appError.ErrorInvalidMFACode:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusFailed))
+		case nil:
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusSuccess))
+		default:
+			// no-op
+			return
+		}
+
+		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+			logger.NewLogger().
+				WithContext(ctx).
+				With("error", err).
+				Error("Failed to create user login log")
+		}
+	}()
+
+	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata)
+	if err != nil {
+		if errors.Is(err, cache.Nil) {
+			return nil, appError.ErrorInvalidMFAReferenceID
+		}
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	code, err := h.cache.Get(ctx, cache.GetPhoneLoginCodeKey(mfaMetadata.UserID))
+	if mfaMetadata.Code != req.Code {
+		return nil, appError.ErrorInvalidMFACode
+	}
+
+	mfaMetadata.Type = domain.UserLoginTypeMFASMS
+	mfaMetadata.PrivateKey = randstr.Hex(16)
+	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5))
 	if err != nil {
 		return nil, err
 	}
 
-	if code != req.Code {
-		return nil, errors.New("invalid code")
-	}
-
-	mfaMetadata.Type = domain.UserMFATypePhone
-	mfaMetadata.PrivateKey = randstr.Hex(16)
-	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
-		return nil, err
-	}
-
-	if err := h.cache.Del(ctx, cache.GetPhoneLoginCodeKey(mfaMetadata.UserID)); err != nil {
-		return nil, err
-	}
-
-	response := &domain.VerifyLoginPhoneCodeResponse{
+	return &domain.VerifyLoginPhoneCodeResponse{
 		ReferenceID: req.ReferenceID,
 		PrivateKey:  mfaMetadata.PrivateKey,
-	}
-
-	return response, nil
+	}, nil
 }
 
 func (h *LoginController) isRequiredMFA() bool {

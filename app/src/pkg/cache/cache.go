@@ -51,6 +51,9 @@ func (r *Cache) Get(ctx context.Context, key string) (string, error) {
 		Info("Getting value from cache")
 	result, err := r.rd.Get(ctx, key).Result()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", Nil
+		}
 		return "", err
 	}
 	return result, nil
@@ -64,6 +67,9 @@ func (r *Cache) GetJSON(ctx context.Context, key string, value interface{}) erro
 		Info("Getting value from cache")
 	result, err := r.rd.Get(ctx, key).Result()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return Nil
+		}
 		return err
 	}
 	return json.Unmarshal([]byte(result), value)
@@ -88,6 +94,9 @@ func (r *Cache) SetJSON(ctx context.Context, key string, value interface{}, expi
 		Info("Setting value in cache")
 	json, err := json.Marshal(value)
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return Nil
+		}
 		return err
 	}
 	return r.rd.Set(ctx, key, json, *expiration).Err()
@@ -108,6 +117,9 @@ func (r *Cache) GetAndDel(ctx context.Context, key string) (string, error) {
 		Info("Getting and deleting value from cache")
 	result, err := r.rd.GetDel(ctx, key).Result()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", Nil
+		}
 		return "", err
 	}
 	return result, nil

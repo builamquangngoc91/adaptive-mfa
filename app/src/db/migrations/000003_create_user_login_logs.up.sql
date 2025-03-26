@@ -3,7 +3,6 @@ CREATE TABLE "user_login_logs" (
     "request_id" UUID NOT NULL,
     "reference_id" UUID,
     "user_id" UUID,
-    "username" VARCHAR(255) NOT NULL,
     "ip_address" VARCHAR(30),
     "user_agent" VARCHAR(255),
     "device_id" VARCHAR(255),
@@ -11,6 +10,7 @@ CREATE TABLE "user_login_logs" (
     "login_type" VARCHAR(255) NOT NULL,
     "login_status" VARCHAR(255),
     "is_impersonation" BOOLEAN DEFAULT FALSE,
+    "attempts" INTEGER DEFAULT 0,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ,
     "deleted_at" TIMESTAMPTZ

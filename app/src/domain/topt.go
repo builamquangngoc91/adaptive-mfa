@@ -28,15 +28,17 @@ type DeleteTOTPMethodRequest struct{}
 type DeleteTOTPMethodResponse struct{}
 
 type MFAMetadata struct {
-	PrivateKey string      `json:"private_key"`
-	UserID     string      `json:"user_id"`
-	Type       UserMFAType `json:"type"`
+	PrivateKey string        `json:"private_key"`
+	UserID     string        `json:"user_id"`
+	Username   string        `json:"username"`
+	Type       UserLoginType `json:"type"`
+	Code       string        `json:"code"`
 }
 
-type UserMFAType string
+type UserLoginType string
 
 const (
-	UserMFATypePhone UserMFAType = "phone"
-	UserMFATypeEmail UserMFAType = "email"
-	UserMFATypeOTP   UserMFAType = "otp"
+	UserLoginTypeMFAMail UserLoginType = "mfa_mail"
+	UserLoginTypeMFASMS  UserLoginType = "mfa_sms"
+	UserLoginTypeMFATOTP UserLoginType = "mfa_totp"
 )
