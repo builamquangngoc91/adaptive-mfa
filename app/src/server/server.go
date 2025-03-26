@@ -34,7 +34,6 @@ func (s *Server) Run() error {
 		Handler: s,
 	}
 
-	fmt.Printf("Server starting on port %d\n", s.port)
 	return s.server.ListenAndServe()
 }
 

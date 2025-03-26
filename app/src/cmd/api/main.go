@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,16 +30,16 @@ import (
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		slog.Error("Failed to load config", "error", err)
 	}
 
 	db, err := database.NewDatabase(cfg.Database)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		slog.Error("Failed to connect to database", "error", err)
 	}
 	cache, err := cache.New(cfg.Cache)
 	if err != nil {
-		log.Fatalf("Failed to connect to cache: %v", err)
+		slog.Error("Failed to connect to cache", "error", err)
 	}
 
 	userRepository := repository.NewUserRepository(db)
@@ -103,15 +104,15 @@ func main() {
 
 	// Start the server in a goroutine
 	go func() {
-		log.Printf("Server starting on port %d...", 8082)
+		slog.Info(fmt.Sprintf("Server starting on port %d...", 8082))
 		if err := s.Run(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+			slog.Error("Server error", "error", err)
 		}
 	}()
 
 	// Wait for interrupt signal
 	<-stop
-	log.Println("Shutdown signal received, gracefully shutting down...")
+	slog.Info("Shutdown signal received, gracefully shutting down...")
 
 	// Create a deadline context for the shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -119,8 +120,8 @@ func main() {
 
 	// Attempt graceful shutdown
 	if err := s.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		slog.Error("Server forced to shutdown", "error", err)
 	}
 
-	log.Println("Server gracefully stopped")
+	slog.Info("Server gracefully stopped")
 }
