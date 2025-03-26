@@ -32,7 +32,7 @@ type ICache interface {
 	GetAndDel(ctx context.Context, key string) (string, error)
 	GetAndDelJSON(ctx context.Context, key string, value interface{}) error
 	Ping(ctx context.Context) error
-	Close(ctx context.Context) error
+	Close() error
 }
 
 type Cache struct {
@@ -153,6 +153,6 @@ func (r *Cache) Ping(ctx context.Context) error {
 	return r.rd.Ping(ctx).Err()
 }
 
-func (r *Cache) Close(ctx context.Context) error {
+func (r *Cache) Close() error {
 	return r.rd.Close()
 }

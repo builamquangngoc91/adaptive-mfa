@@ -37,16 +37,19 @@ func main() {
 	if err != nil {
 		slog.Error("Failed to connect to database", "error", err)
 	}
+	defer db.Close()
+
 	cache, err := cache.New(cfg.Cache)
 	if err != nil {
 		slog.Error("Failed to connect to cache", "error", err)
 	}
+	defer cache.Close()
 
 	userRepository := repository.NewUserRepository(db)
 	userMFARepository := repository.NewUserMFARepository(db)
 	userLoginLogRepository := repository.NewUserLoginLogRepository(db)
 
-	s := server.NewServer(8082)
+	s := server.NewServer(cfg.Port)
 	s.Router.Get("/health", func(ctx context.Context, req any) (any, error) {
 		return "Health check OK", nil
 	})
@@ -105,7 +108,7 @@ func main() {
 
 	// Start the server in a goroutine
 	go func() {
-		slog.Info(fmt.Sprintf("Server starting on port %d...", 8082))
+		slog.Info(fmt.Sprintf("Server starting on port %d...", cfg.Port))
 		if err := s.Run(); err != nil && err != http.ErrServerClosed {
 			slog.Error("Server error", "error", err)
 		}

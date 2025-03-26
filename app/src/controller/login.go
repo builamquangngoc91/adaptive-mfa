@@ -278,9 +278,16 @@ func (h *LoginController) SendLoginEmailCode(ctx context.Context, req *domain.Se
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	msg := fmt.Sprintf("Your login verification code is %s", code)
+	disavowURL := fmt.Sprintf("%s?ref=%s", h.cfg.DisavowURL, req.ReferenceID)
+	msg := fmt.Sprintf("Your login verification code is %s, If you did not request this code please click link %s", code, disavowURL)
 	if err := h.emailService.SendEmail(ctx, userMfa.Metadata.Email, "Login Verification Code", msg); err != nil {
 		return nil, appError.WithAppError(err, appError.CodeSendEmailFailed)
+	}
+	if h.cfg.Env != string(common.Production) {
+		return &domain.SendLoginEmailCodeResponse{
+			Code:       code,
+			DisavowURL: disavowURL,
+		}, nil
 	}
 	return &domain.SendLoginEmailCodeResponse{}, nil
 }
@@ -380,9 +387,17 @@ func (h *LoginController) SendLoginPhoneCode(ctx context.Context, req *domain.Se
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	msg := fmt.Sprintf("Your login verification code is %s", code)
+	disavowURL := fmt.Sprintf("%s?ref=%s", h.cfg.DisavowURL, req.ReferenceID)
+	msg := fmt.Sprintf("Your login verification code is %s, If you did not request this code please click link %s", code, disavowURL)
 	if err := h.smsService.SendSMS(ctx, userMfa.Metadata.Phone, msg); err != nil {
 		return nil, appError.WithAppError(err, appError.CodeSendSMSFailed)
+	}
+
+	if h.cfg.Env != string(common.Production) {
+		return &domain.SendLoginPhoneCodeResponse{
+			Code:       code,
+			DisavowURL: disavowURL,
+		}, nil
 	}
 	return &domain.SendLoginPhoneCodeResponse{}, nil
 }

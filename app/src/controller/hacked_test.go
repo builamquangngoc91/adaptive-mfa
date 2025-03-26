@@ -66,7 +66,7 @@ func TestHackedController_Disavow(t *testing.T) {
 	validate(t, &testcase{
 		name: "missing ref",
 		ctx:  context.Background(),
-		err:  appError.WithAppError(errors.New("reference ID is required"), appError.CodeInvalidRequest),
+		err:  appError.WithAppError(errors.New("reference ID is required"), appError.CodeBadRequest),
 		hackedController: func() IHackedController {
 			ctrl := gomock.NewController(t)
 			_cacheMock := cacheMock.NewMockICache(ctrl)

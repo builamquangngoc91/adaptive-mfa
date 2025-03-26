@@ -15,7 +15,7 @@ import (
 type IDatabase interface {
 	GetDB() *sql.DB
 	Ping(ctx context.Context) error
-	Close(ctx context.Context) error
+	Close() error
 	StartTx(ctx context.Context, fn TxFunc, opts *sql.TxOptions) error
 	Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
@@ -101,7 +101,7 @@ func (d *Database) Ping(ctx context.Context) error {
 	return d.db.PingContext(ctx)
 }
 
-func (d *Database) Close(ctx context.Context) error {
+func (d *Database) Close() error {
 	return d.db.Close()
 }
 

@@ -37,7 +37,7 @@ func NewHackedController(cfg *config.Config, cache cache.ICache, userLoginLogRep
 func (h *HackedController) Disavow(ctx context.Context) (*domain.DisavowResponse, error) {
 	referenceID := common.GetParams(ctx).Get("ref")
 	if referenceID == "" {
-		return nil, appError.WithAppError(errors.New("reference ID is required"), appError.CodeInvalidRequest)
+		return nil, appError.WithAppError(errors.New("reference ID is required"), appError.CodeBadRequest)
 	}
 
 	var mfaMetadata domain.MFAMetadata

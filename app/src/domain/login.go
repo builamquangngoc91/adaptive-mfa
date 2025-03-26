@@ -31,7 +31,10 @@ type SendLoginEmailCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 }
 
-type SendLoginEmailCodeResponse struct{}
+type SendLoginEmailCodeResponse struct {
+	Code       string `json:"code,omitempty"`
+	DisavowURL string `json:"disavow_url,omitempty"`
+}
 
 type VerifyLoginEmailCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
@@ -47,7 +50,10 @@ type SendLoginPhoneCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 }
 
-type SendLoginPhoneCodeResponse struct{}
+type SendLoginPhoneCodeResponse struct {
+	Code       string `json:"code,omitempty"`
+	DisavowURL string `json:"disavow_url,omitempty"`
+}
 
 type VerifyLoginPhoneCodeRequest struct {
 	ReferenceID string `json:"reference_id"`

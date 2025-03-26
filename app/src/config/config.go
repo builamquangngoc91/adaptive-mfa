@@ -13,9 +13,12 @@ import (
 )
 
 type Config struct {
-	Database *database.DatabaseConfig
-	Cache    *cache.CacheConfig
-	Jwt      string
+	Database   *database.DatabaseConfig
+	Cache      *cache.CacheConfig
+	Jwt        string
+	DisavowURL string
+	Port       int
+	Env        string
 }
 
 func LoadConfig() (*Config, error) {
@@ -23,10 +26,18 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	port, err := strconv.Atoi(os.Getenv("AMFA_PORT"))
+	if err != nil {
+		port = 8082
+	}
+
 	return &Config{
-		Database: LoadDatabaseConfig(),
-		Cache:    LoadCacheConfig(),
-		Jwt:      os.Getenv("AMFA_JWT_SECRET"),
+		Database:   LoadDatabaseConfig(),
+		Cache:      LoadCacheConfig(),
+		Jwt:        os.Getenv("AMFA_JWT_SECRET"),
+		DisavowURL: os.Getenv("AMFA_DISAVOW_URL"),
+		Port:       port,
+		Env:        os.Getenv("AMFA_ENV"),
 	}, nil
 }
 

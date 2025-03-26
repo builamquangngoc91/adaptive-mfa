@@ -2,11 +2,14 @@ package controller
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"adaptive-mfa/domain"
 	"adaptive-mfa/model"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/database"
+	appError "adaptive-mfa/pkg/error"
 	"adaptive-mfa/repository"
 
 	"github.com/google/uuid"
@@ -31,9 +34,27 @@ func NewRegisterController(cache cache.ICache, userRepository repository.IUserRe
 }
 
 func (h *RegisterController) Register(ctx context.Context, req *domain.RegisterRequest) (*domain.RegisterResponse, error) {
+	if req.Username == "" {
+		return nil, appError.WithAppError(errors.New("username is required"), appError.CodeBadRequest)
+	}
+	if req.Password == "" {
+		return nil, appError.WithAppError(errors.New("password is required"), appError.CodeBadRequest)
+	}
+	if req.Fullname == "" {
+		return nil, appError.WithAppError(errors.New("fullname is required"), appError.CodeBadRequest)
+	}
+
+	user, err := h.userRepository.GetByUsername(ctx, nil, req.Username)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
+	}
+	if user != nil {
+		return nil, appError.WithAppError(errors.New("username already exists"), appError.CodeBadRequest)
+	}
+
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
 	if err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	newUser := model.User{
@@ -44,9 +65,8 @@ func (h *RegisterController) Register(ctx context.Context, req *domain.RegisterR
 		Email:        database.NewNullString(req.Email),
 		Phone:        database.NewNullString(req.Phone),
 	}
-
 	if err := h.userRepository.Create(ctx, nil, &newUser); err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	return &domain.RegisterResponse{}, nil

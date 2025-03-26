@@ -12,7 +12,7 @@ const (
 	CodeInvalidMFAReferenceID     Code = 104000002
 	CodeInvalidMFAPrivateKey      Code = 104000003
 	CodeInvalidMFACode            Code = 104000004
-	CodeInvalidRequest            Code = 104000005
+	CodeBadRequest                Code = 104000005
 	CodeExceededMFACodeAttempts   Code = 104000006
 	CodeMFAForPhoneNotFound       Code = 104000007
 	CodeMFAForEmailNotFound       Code = 104000008
@@ -46,8 +46,8 @@ var mapCodeToMessage = map[Code]responseInfo{
 		Message:    "invalid mfa code",
 		StatusCode: http.StatusBadRequest,
 	},
-	CodeInvalidRequest: {
-		Message:    "invalid request",
+	CodeBadRequest: {
+		Message:    "bad request",
 		StatusCode: http.StatusBadRequest,
 	},
 	CodeExceededMFACodeAttempts: {
@@ -119,7 +119,7 @@ var (
 	ErrorInvalidMFAReferenceID     AppError = AppErrorFromCode(CodeInvalidMFAReferenceID)
 	ErrorInvalidMFAPrivateKey      AppError = AppErrorFromCode(CodeInvalidMFAPrivateKey)
 	ErrorInvalidMFACode            AppError = AppErrorFromCode(CodeInvalidMFACode)
-	ErrorInvalidRequest            AppError = AppErrorFromCode(CodeInvalidRequest)
+	ErrorBadRequest                AppError = AppErrorFromCode(CodeBadRequest)
 	ErrorExceededMFACodeAttempts   AppError = AppErrorFromCode(CodeExceededMFACodeAttempts)
 	ErrorMFAForPhoneNotFound       AppError = AppErrorFromCode(CodeMFAForPhoneNotFound)
 	ErrorMFAForEmailNotFound       AppError = AppErrorFromCode(CodeMFAForEmailNotFound)
