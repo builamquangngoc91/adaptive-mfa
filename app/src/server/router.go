@@ -154,7 +154,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					With("path", req.URL.Path).
 					With("error", _err.Error()).
 					Error("Handler error")
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(_err.StatusCode())
 				json.NewEncoder(w).Encode(&domain.Error{
 					Message:   _err.Error(),
 					Code:      int(_err.Code()),

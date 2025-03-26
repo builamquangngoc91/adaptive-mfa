@@ -1,6 +1,9 @@
 package error
 
-import "errors"
+import (
+	"errors"
+	"net/http"
+)
 
 type Code int
 
@@ -19,19 +22,48 @@ const (
 	CodeSendEmailFailed           Code = 105000004
 )
 
-var mapCodeToMessage = map[Code]string{
-	CodeUsernameOrPasswordInvalid: "username or password invalid",
-	CodeInvalidMFAReferenceID:     "invalid mfa reference id",
-	CodeInvalidMFAPrivateKey:      "invalid mfa private key",
-	CodeInvalidMFACode:            "invalid mfa code",
-	CodeInvalidRequest:            "invalid request",
-	CodeExceededMFACodeAttempts:   "exceeded mfa code attempts",
-	CodeMFAForPhoneNotFound:       "mfa for phone not found",
-	CodeMFAForEmailNotFound:       "mfa for email not found",
-	CodeInternalServerError:       "internal server error",
-	CodeCacheError:                "cache error",
-	CodeSendSMSFailed:             "send sms failed",
-	CodeSendEmailFailed:           "send email failed",
+type responseInfo struct {
+	Message    string
+	StatusCode int
+}
+
+var mapCodeToMessage = map[Code]responseInfo{
+	CodeUsernameOrPasswordInvalid: {
+		Message:    "username or password invalid",
+		StatusCode: http.StatusBadRequest,
+	},
+	CodeInvalidMFAReferenceID: {
+		Message:    "invalid mfa reference id",
+		StatusCode: http.StatusBadRequest,
+	},
+	CodeInvalidMFAPrivateKey: {
+		Message:    "invalid mfa private key",
+		StatusCode: http.StatusBadRequest,
+	},
+	CodeInvalidMFACode: {
+		Message:    "invalid mfa code",
+		StatusCode: http.StatusBadRequest,
+	},
+	CodeInvalidRequest: {
+		Message:    "invalid request",
+		StatusCode: http.StatusBadRequest,
+	},
+	CodeExceededMFACodeAttempts: {
+		Message:    "exceeded mfa code attempts",
+		StatusCode: http.StatusTooManyRequests,
+	},
+	CodeMFAForPhoneNotFound: {
+		Message:    "mfa for phone not found",
+		StatusCode: http.StatusBadRequest,
+	},
+	CodeMFAForEmailNotFound: {
+		Message:    "mfa for email not found",
+		StatusCode: http.StatusBadRequest,
+	},
+	CodeSendEmailFailed: {
+		Message:    "send email failed",
+		StatusCode: http.StatusInternalServerError,
+	},
 }
 
 type AppError struct {
@@ -51,9 +83,13 @@ func (e AppError) Code() Code {
 	return e.code
 }
 
+func (e AppError) StatusCode() int {
+	return mapCodeToMessage[e.code].StatusCode
+}
+
 func WithAppError(err error, code Code) AppError {
 	if err == nil {
-		err = errors.New(mapCodeToMessage[code])
+		err = errors.New(mapCodeToMessage[code].Message)
 	}
 	return AppError{
 		err:  err,
@@ -64,7 +100,7 @@ func WithAppError(err error, code Code) AppError {
 func AppErrorFromCode(code Code) AppError {
 	return AppError{
 		code: code,
-		err:  errors.New(mapCodeToMessage[code]),
+		err:  errors.New(mapCodeToMessage[code].Message),
 	}
 }
 
