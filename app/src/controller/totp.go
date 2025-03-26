@@ -19,9 +19,9 @@ import (
 
 type ITOTPController interface {
 	AddTOTPMethod(ctx context.Context, req *domain.AddTOTPMethodRequest) (*domain.AddTOTPMethodResponse, error)
-	DeleteTOTPMethod(ctx context.Context, req *domain.DeleteTOTPMethodRequest) (*domain.DeleteTOTPMethodResponse, error)
+	DeleteTOTPMethod(ctx context.Context) (*domain.DeleteTOTPMethodResponse, error)
 	VerifyTOTPCode(ctx context.Context, req *domain.VerifyTOTPCodeRequest) (*domain.VerifyTOTPCodeResponse, error)
-	ListTOTPMethods(ctx context.Context, req *domain.ListTOTPMethodsRequest) (*domain.ListTOTPMethodsResponse, error)
+	ListTOTPMethods(ctx context.Context) (*domain.ListTOTPMethodsResponse, error)
 }
 
 type TOTPController struct {
@@ -78,7 +78,7 @@ func (c *TOTPController) AddTOTPMethod(ctx context.Context, req *domain.AddTOTPM
 	return response, nil
 }
 
-func (c *TOTPController) DeleteTOTPMethod(ctx context.Context, req *domain.DeleteTOTPMethodRequest) (*domain.DeleteTOTPMethodResponse, error) {
+func (c *TOTPController) DeleteTOTPMethod(ctx context.Context) (*domain.DeleteTOTPMethodResponse, error) {
 	userID := common.GetUserID(ctx)
 	userMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, userID, string(model.UserMFATypeOTP))
 	if err != nil {
@@ -130,7 +130,7 @@ func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyT
 	return response, nil
 }
 
-func (c *TOTPController) ListTOTPMethods(ctx context.Context, req *domain.ListTOTPMethodsRequest) (*domain.ListTOTPMethodsResponse, error) {
+func (c *TOTPController) ListTOTPMethods(ctx context.Context) (*domain.ListTOTPMethodsResponse, error) {
 	userID := common.GetUserID(ctx)
 	userMFAs, err := c.userMFARepository.ListByUserID(ctx, nil, userID)
 	if err != nil {

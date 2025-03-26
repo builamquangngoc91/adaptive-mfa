@@ -17,13 +17,9 @@ type VerifyTOTPCodeResponse struct {
 	PrivateKey  string `json:"private_key"`
 }
 
-type ListTOTPMethodsRequest struct{}
-
 type ListTOTPMethodsResponse struct {
 	Methods []string `json:"methods"`
 }
-
-type DeleteTOTPMethodRequest struct{}
 
 type DeleteTOTPMethodResponse struct{}
 

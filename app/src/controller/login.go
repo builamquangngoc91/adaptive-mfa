@@ -363,7 +363,7 @@ func (h *LoginController) SendLoginPhoneCode(ctx context.Context, req *domain.Se
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	userMfa, err := h.userMFARepository.GetByUserIDAndMFAType(ctx, nil, mfaMetadata.UserID, string(model.UserMFATypeEmail))
+	userMfa, err := h.userMFARepository.GetByUserIDAndMFAType(ctx, nil, mfaMetadata.UserID, string(model.UserMFATypePhone))
 	if err != nil && err != sql.ErrNoRows {
 		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
