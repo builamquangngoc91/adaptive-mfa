@@ -35,12 +35,11 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 			metadata, 
 			login_type, 
 			login_status,
-			is_impersonation,
 			attempts,
 			required_mfa,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
 	`
 	result, err := r.db.ExecTx(ctx, tx, command,
 		userLoginLog.ID,
@@ -53,7 +52,6 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 		userLoginLog.Metadata,
 		userLoginLog.LoginType,
 		userLoginLog.LoginStatus,
-		userLoginLog.IsImpersonation,
 		userLoginLog.Attempts,
 		userLoginLog.RequiredMFA,
 	)
@@ -108,16 +106,31 @@ func (r *UserLoginLogRepository) GetAnalysis(ctx context.Context, tx *sql.Tx, us
 			WHERE ull.user_id = $1
 				AND ull.login_status = 'fail'
 				AND ull.created_at > (SELECT created_at FROM latest_success)
+		),
+		count_disavowed_from_ip AS (
+			SELECT count(ull.id) AS disavowed_count
+			FROM user_login_logs ull 
+			WHERE ull.user_id = $1
+				AND ull.ip_address = $2
+				AND ull.login_status = 'disavowed'
+				AND ull.created_at > (SELECT created_at FROM latest_success_from_ip)
 		)
 		SELECT
 			(SELECT created_at FROM latest_success_from_ip) AS latest_success_from_ip,
 			(SELECT created_at FROM latest_success) AS latest_success,
 			(SELECT attempt_count FROM count_attempts_from_ip) AS count_attempts_from_ip,
-			(SELECT attempt_count FROM count_attempts) AS count_attempts
+			(SELECT attempt_count FROM count_attempts) AS count_attempts,
+			(SELECT disavowed_count FROM count_disavowed_from_ip) AS count_disavowed_from_ip
 	`
 	var userLoginLogAnalysis model.UserLoginLogAnalysis
 	if err := r.db.QueryRowTx(ctx, tx, query, userID, ipAddress).
-		Scan(&userLoginLogAnalysis.LatestSuccessFromIP, &userLoginLogAnalysis.LatestSuccess, &userLoginLogAnalysis.CountAttemptsFromIP, &userLoginLogAnalysis.CountAttempts); err != nil {
+		Scan(
+			&userLoginLogAnalysis.LatestSuccessFromIP,
+			&userLoginLogAnalysis.LatestSuccess,
+			&userLoginLogAnalysis.CountAttemptsFromIP,
+			&userLoginLogAnalysis.CountAttempts,
+			&userLoginLogAnalysis.CountDisavowedFromIP,
+		); err != nil {
 		return nil, err
 	}
 

@@ -33,6 +33,7 @@ type MFAMetadata struct {
 	Username   string        `json:"username"`
 	Type       UserLoginType `json:"type"`
 	Code       string        `json:"code"`
+	Attempts   int           `json:"attempts"`
 }
 
 type UserLoginType string

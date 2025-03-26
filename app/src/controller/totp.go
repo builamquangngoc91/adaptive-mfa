@@ -4,14 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
 
 	"adaptive-mfa/domain"
 	"adaptive-mfa/model"
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/common"
 	"adaptive-mfa/pkg/database"
-	"adaptive-mfa/pkg/ptr"
 	"adaptive-mfa/repository"
 
 	"github.com/google/uuid"
@@ -120,7 +118,7 @@ func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyT
 
 	mfaMetadata.Type = domain.UserLoginTypeMFATOTP
 	mfaMetadata.PrivateKey = randstr.Hex(16)
-	if err := c.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
+	if err := c.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true); err != nil {
 		return nil, err
 	}
 

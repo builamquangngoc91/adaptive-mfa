@@ -11,22 +11,21 @@ import (
 type UserLoginLogs []*UserLoginLog
 
 type UserLoginLog struct {
-	ID              string
-	RequestID       string
-	ReferenceID     sql.NullString
-	UserID          sql.NullString
-	IPAddress       sql.NullString
-	UserAgent       sql.NullString
-	DeviceID        sql.NullString
-	Metadata        *UserLoginMetadata
-	LoginType       string
-	LoginStatus     sql.NullString
-	IsImpersonation bool
-	Attempts        int
-	RequiredMFA     bool
-	CreatedAt       time.Time
-	UpdatedAt       sql.NullTime
-	DeletedAt       sql.NullTime
+	ID          string
+	RequestID   string
+	ReferenceID sql.NullString
+	UserID      sql.NullString
+	IPAddress   sql.NullString
+	UserAgent   sql.NullString
+	DeviceID    sql.NullString
+	Metadata    *UserLoginMetadata
+	LoginType   string
+	LoginStatus sql.NullString
+	Attempts    int
+	RequiredMFA bool
+	CreatedAt   time.Time
+	UpdatedAt   sql.NullTime
+	DeletedAt   sql.NullTime
 }
 
 type UserLoginType string
@@ -41,8 +40,10 @@ const (
 type UserLoginStatus string
 
 const (
-	UserLoginStatusSuccess UserLoginStatus = "success"
-	UserLoginStatusFailed  UserLoginStatus = "failed"
+	UserLoginStatusSuccess   UserLoginStatus = "success"
+	UserLoginStatusFailed    UserLoginStatus = "failed"
+	UserLoginStatusVerified  UserLoginStatus = "verified"
+	UserLoginStatusDisavowed UserLoginStatus = "disavowed"
 )
 
 type UserLoginMetadata struct {
@@ -62,8 +63,9 @@ func (m *UserLoginMetadata) Scan(value interface{}) error {
 }
 
 type UserLoginLogAnalysis struct {
-	LatestSuccessFromIP sql.NullTime
-	LatestSuccess       sql.NullTime
-	CountAttemptsFromIP sql.NullInt64
-	CountAttempts       sql.NullInt64
+	LatestSuccessFromIP  sql.NullTime
+	LatestSuccess        sql.NullTime
+	CountAttemptsFromIP  sql.NullInt64
+	CountAttempts        sql.NullInt64
+	CountDisavowedFromIP sql.NullInt64
 }

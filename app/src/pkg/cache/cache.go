@@ -2,6 +2,7 @@ package cache
 
 import (
 	"adaptive-mfa/pkg/logger"
+	"adaptive-mfa/pkg/ptr"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,10 +25,11 @@ type CacheConfig struct {
 type ICache interface {
 	Get(ctx context.Context, key string) (string, error)
 	GetJSON(ctx context.Context, key string, value interface{}) error
-	Set(ctx context.Context, key string, value string, expiration *time.Duration) error
-	SetJSON(ctx context.Context, key string, value interface{}, expiration *time.Duration) error
+	Set(ctx context.Context, key string, value string, expiration *time.Duration, keepTTL bool) error
+	SetJSON(ctx context.Context, key string, value interface{}, expiration *time.Duration, keepTTL bool) error
 	Del(ctx context.Context, key string) error
 	GetAndDel(ctx context.Context, key string) (string, error)
+	GetAndDelJSON(ctx context.Context, key string, value interface{}) error
 	Ping(ctx context.Context) error
 	Close(ctx context.Context) error
 }
@@ -75,17 +77,20 @@ func (r *Cache) GetJSON(ctx context.Context, key string, value interface{}) erro
 	return json.Unmarshal([]byte(result), value)
 }
 
-func (r *Cache) Set(ctx context.Context, key string, value string, expiration *time.Duration) error {
+func (r *Cache) Set(ctx context.Context, key string, value string, expiration *time.Duration, keepTTL bool) error {
 	logger.NewLogger().
 		WithContext(ctx).
 		With("key", key).
 		With("value", value).
 		With("expiration", expiration).
 		Info("Setting value in cache")
+	if keepTTL {
+		expiration = ptr.ToPtr(time.Duration(redis.KeepTTL))
+	}
 	return r.rd.Set(ctx, key, value, *expiration).Err()
 }
 
-func (r *Cache) SetJSON(ctx context.Context, key string, value interface{}, expiration *time.Duration) error {
+func (r *Cache) SetJSON(ctx context.Context, key string, value interface{}, expiration *time.Duration, keepTTL bool) error {
 	logger.NewLogger().
 		WithContext(ctx).
 		With("key", key).
@@ -98,6 +103,9 @@ func (r *Cache) SetJSON(ctx context.Context, key string, value interface{}, expi
 			return Nil
 		}
 		return err
+	}
+	if keepTTL {
+		expiration = ptr.ToPtr(time.Duration(redis.KeepTTL))
 	}
 	return r.rd.Set(ctx, key, json, *expiration).Err()
 }
@@ -123,6 +131,21 @@ func (r *Cache) GetAndDel(ctx context.Context, key string) (string, error) {
 		return "", err
 	}
 	return result, nil
+}
+
+func (r *Cache) GetAndDelJSON(ctx context.Context, key string, value interface{}) error {
+	logger.NewLogger().
+		WithContext(ctx).
+		With("key", key).
+		Info("Getting and deleting value from cache")
+	result, err := r.rd.GetDel(ctx, key).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return Nil
+		}
+		return err
+	}
+	return json.Unmarshal([]byte(result), value)
 }
 
 func (r *Cache) Ping(ctx context.Context) error {

@@ -71,7 +71,7 @@ func (h *UserVerificationController) SendEmailVerification(ctx context.Context, 
 	}
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
-	if err := h.cache.Set(ctx, cache.GetEmailVerificationCodeKey(userID), code, ptr.ToPtr(time.Minute*5)); err != nil {
+	if err := h.cache.Set(ctx, cache.GetEmailVerificationCodeKey(userID), code, ptr.ToPtr(time.Minute*5), false); err != nil {
 		return nil, err
 	}
 
@@ -134,7 +134,7 @@ func (h *UserVerificationController) SendPhoneVerification(ctx context.Context, 
 	}
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
-	if err := h.cache.Set(ctx, cache.GetPhoneVerificationCodeKey(userID), code, ptr.ToPtr(time.Minute*5)); err != nil {
+	if err := h.cache.Set(ctx, cache.GetPhoneVerificationCodeKey(userID), code, ptr.ToPtr(time.Minute*5), false); err != nil {
 		return nil, err
 	}
 

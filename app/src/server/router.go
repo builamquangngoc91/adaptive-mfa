@@ -90,27 +90,44 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			ctx = context.WithValue(ctx, common.ContextKeyParams, req.URL.Query())
 			ctx = context.WithValue(ctx, common.ContextKeyHeaders, req.Header)
 
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
 			handler := handlerWithMiddlewares.Handler
 
 			handlerValue := reflect.ValueOf(handler)
 			handlerType := reflect.TypeOf(handler)
 
-			if handlerType.NumIn() != 2 {
-				http.Error(w, "handler must have 2 arguments", http.StatusInternalServerError)
-				return
-			}
+			var (
+				body []byte
+				in   []reflect.Value
+			)
 
-			reqType := handlerType.In(1)
-			newReq := reflect.New(reqType).Interface()
-			if err := json.Unmarshal(body, newReq); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
+			switch req.Method {
+			case http.MethodGet, http.MethodDelete:
+				if handlerType.NumIn() != 1 {
+					http.Error(w, "handler must have 1 argument", http.StatusInternalServerError)
+					return
+				}
+
+				in = []reflect.Value{reflect.ValueOf(ctx)}
+			default:
+				if handlerType.NumIn() != 2 {
+					http.Error(w, "handler must have 2 arguments", http.StatusInternalServerError)
+					return
+				}
+
+				body, err = io.ReadAll(r.Body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				reqType := handlerType.In(1)
+				newReq := reflect.New(reqType).Interface()
+				if err := json.Unmarshal(body, newReq); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				in = []reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(newReq).Elem()}
 			}
 
 			logger.NewLogger().
@@ -122,7 +139,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				With("params", req.URL.Query()).
 				Info("Calling handler")
 
-			results := handlerValue.Call([]reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(newReq).Elem()})
+			results := handlerValue.Call(in)
 			if len(results) != 2 {
 				http.Error(w, "handler must return 2 values", http.StatusInternalServerError)
 				return
@@ -130,7 +147,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			resp := results[0].Interface()
 			respErr := results[1].Interface()
-			fmt.Println("abc: ", respErr)
 			if _err, ok := respErr.(appError.AppError); ok && respErr != nil {
 				logger.NewLogger().
 					WithContext(ctx).

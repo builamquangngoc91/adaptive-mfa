@@ -68,7 +68,7 @@ func main() {
 	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository, emailService, smsService)
 	logoutController := controller.NewLogoutController(cache)
 	totpController := controller.NewTOTPController(db, userMFARepository, cache)
-	hackedController := controller.NewHackedController(cfg, cache)
+	hackedController := controller.NewHackedController(cfg, cache, userLoginLogRepository)
 
 	v1Group := s.Router.Group("/v1")
 	v1Group.Use(middleware.RequestIDMiddleware)

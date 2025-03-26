@@ -8,9 +8,11 @@ const (
 	CodeUsernameOrPasswordInvalid Code = 104000001
 	CodeInvalidMFAReferenceID     Code = 104000002
 	CodeInvalidMFAPrivateKey      Code = 104000003
-	CodeInvalidMFACode            Code = 104000006
-	CodeMFAForPhoneNotFound       Code = 104000004
-	CodeMFAForEmailNotFound       Code = 104000005
+	CodeInvalidMFACode            Code = 104000004
+	CodeInvalidRequest            Code = 104000005
+	CodeExceededMFACodeAttempts   Code = 104000006
+	CodeMFAForPhoneNotFound       Code = 104000007
+	CodeMFAForEmailNotFound       Code = 104000008
 	CodeInternalServerError       Code = 105000001
 	CodeCacheError                Code = 105000002
 	CodeSendSMSFailed             Code = 105000003
@@ -22,6 +24,8 @@ var mapCodeToMessage = map[Code]string{
 	CodeInvalidMFAReferenceID:     "invalid mfa reference id",
 	CodeInvalidMFAPrivateKey:      "invalid mfa private key",
 	CodeInvalidMFACode:            "invalid mfa code",
+	CodeInvalidRequest:            "invalid request",
+	CodeExceededMFACodeAttempts:   "exceeded mfa code attempts",
 	CodeMFAForPhoneNotFound:       "mfa for phone not found",
 	CodeMFAForEmailNotFound:       "mfa for email not found",
 	CodeInternalServerError:       "internal server error",
@@ -69,6 +73,8 @@ var (
 	ErrorInvalidMFAReferenceID     AppError = AppErrorFromCode(CodeInvalidMFAReferenceID)
 	ErrorInvalidMFAPrivateKey      AppError = AppErrorFromCode(CodeInvalidMFAPrivateKey)
 	ErrorInvalidMFACode            AppError = AppErrorFromCode(CodeInvalidMFACode)
+	ErrorInvalidRequest            AppError = AppErrorFromCode(CodeInvalidRequest)
+	ErrorExceededMFACodeAttempts   AppError = AppErrorFromCode(CodeExceededMFACodeAttempts)
 	ErrorMFAForPhoneNotFound       AppError = AppErrorFromCode(CodeMFAForPhoneNotFound)
 	ErrorMFAForEmailNotFound       AppError = AppErrorFromCode(CodeMFAForEmailNotFound)
 	ErrorInternalServerError       AppError = AppErrorFromCode(CodeInternalServerError)

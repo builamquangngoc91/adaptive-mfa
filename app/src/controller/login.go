@@ -128,7 +128,7 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		Username: user.Username,
 	}
 
-	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(requestID), mfaMetadata, ptr.ToPtr(time.Minute*5))
+	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(requestID), mfaMetadata, ptr.ToPtr(time.Minute*5), false)
 	if err != nil {
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
@@ -245,7 +245,7 @@ func (h *LoginController) generateToken(ctx context.Context, user *model.User) (
 	}
 
 	sha1Token := string(sha1.New().Sum([]byte(token)))
-	if err := h.cache.Set(ctx, cache.GetTokenKey(sha1Token), fmt.Sprintf("%d", exp.UnixMilli()), ptr.ToPtr(time.Hour*24)); err != nil {
+	if err := h.cache.Set(ctx, cache.GetTokenKey(sha1Token), fmt.Sprintf("%d", exp.UnixMilli()), ptr.ToPtr(time.Hour*24), false); err != nil {
 		return "", err
 	}
 
@@ -272,7 +272,8 @@ func (h *LoginController) SendLoginEmailCode(ctx context.Context, req *domain.Se
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
 	mfaMetadata.Code = code
-	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
+	mfaMetadata.Type = domain.UserLoginTypeMFAMail
+	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true); err != nil {
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
@@ -303,7 +304,7 @@ func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.
 		case appError.ErrorInvalidMFACode:
 			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusFailed))
 		case nil:
-			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusSuccess))
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusVerified))
 		default:
 			// no-op
 			return
@@ -326,12 +327,22 @@ func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.
 	}
 
 	if mfaMetadata.Code != req.Code {
+		mfaMetadata.Attempts++
+		if mfaMetadata.Attempts >= 5 {
+			return nil, appError.ErrorExceededMFACodeAttempts
+		}
+
+		err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true)
+		if err != nil {
+			return nil, err
+		}
+
 		return nil, appError.ErrorInvalidMFACode
 	}
 
 	mfaMetadata.Type = domain.UserLoginTypeMFAMail
 	mfaMetadata.PrivateKey = randstr.Hex(16)
-	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5))
+	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true)
 	if err != nil {
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
@@ -363,7 +374,8 @@ func (h *LoginController) SendLoginPhoneCode(ctx context.Context, req *domain.Se
 
 	code := fmt.Sprintf("%06d", rand.Intn(999999))
 	mfaMetadata.Code = code
-	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5)); err != nil {
+	mfaMetadata.Type = domain.UserLoginTypeMFASMS
+	if err := h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true); err != nil {
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
@@ -387,6 +399,7 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 			UserAgent:   database.NewNullString(common.GetUserAgent(ctx)),
 			DeviceID:    database.NewNullString(common.GetDeviceID(ctx)),
 			LoginType:   string(model.UserLoginTypeMFASMS),
+			Attempts:    mfaMetadata.Attempts,
 			CreatedAt:   time.Now(),
 		}
 
@@ -394,7 +407,7 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 		case appError.ErrorInvalidMFACode:
 			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusFailed))
 		case nil:
-			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusSuccess))
+			userLoginLog.LoginStatus = database.NewNullString(string(model.UserLoginStatusVerified))
 		default:
 			// no-op
 			return
@@ -416,13 +429,23 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
+	mfaMetadata.Type = domain.UserLoginTypeMFASMS
 	if mfaMetadata.Code != req.Code {
+		mfaMetadata.Attempts++
+		if mfaMetadata.Attempts >= 5 {
+			return nil, appError.ErrorExceededMFACodeAttempts
+		}
+
+		err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true)
+		if err != nil {
+			return nil, err
+		}
+
 		return nil, appError.ErrorInvalidMFACode
 	}
 
-	mfaMetadata.Type = domain.UserLoginTypeMFASMS
 	mfaMetadata.PrivateKey = randstr.Hex(16)
-	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, ptr.ToPtr(time.Minute*5))
+	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -439,13 +462,11 @@ func (h *LoginController) isRequiredMFA(ctx context.Context, userID string, ipAd
 		return false, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
-	fmt.Println(analysis)
-
-	if !analysis.LatestSuccess.Valid {
+	if !analysis.CountDisavowedFromIP.Valid || analysis.CountDisavowedFromIP.Int64 > 0 {
 		return true, nil
 	}
 
-	if !analysis.LatestSuccessFromIP.Valid || analysis.LatestSuccessFromIP.Time.Before(time.Now().Add(-time.Hour*24)) {
+	if !analysis.LatestSuccess.Valid {
 		return true, nil
 	}
 
@@ -454,6 +475,10 @@ func (h *LoginController) isRequiredMFA(ctx context.Context, userID string, ipAd
 	}
 
 	if analysis.CountAttempts.Int64 >= 10 {
+		return true, nil
+	}
+
+	if !analysis.LatestSuccessFromIP.Valid || analysis.LatestSuccessFromIP.Time.Before(time.Now().Add(-time.Hour*24)) {
 		return true, nil
 	}
 
