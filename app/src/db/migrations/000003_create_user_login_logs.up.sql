@@ -11,6 +11,7 @@ CREATE TABLE "user_login_logs" (
     "login_status" VARCHAR(255),
     "is_impersonation" BOOLEAN DEFAULT FALSE,
     "attempts" INTEGER DEFAULT 0,
+    "required_mfa" BOOLEAN DEFAULT FALSE,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ,
     "deleted_at" TIMESTAMPTZ

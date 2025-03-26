@@ -106,17 +106,27 @@ func (d *Database) Close(ctx context.Context) error {
 }
 
 func (d *Database) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	d.logQuery(ctx, query, args...)
-	return d.db.ExecContext(ctx, query, args...)
+	result, err := d.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		d.logQuery(ctx, query, err, args...)
+		return nil, err
+	}
+	d.logQuery(ctx, query, nil, args...)
+	return result, nil
 }
 
 func (d *Database) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	d.logQuery(ctx, query, args...)
-	return d.db.QueryContext(ctx, query, args...)
+	rows, err := d.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		d.logQuery(ctx, query, err, args...)
+		return nil, err
+	}
+	d.logQuery(ctx, query, nil, args...)
+	return rows, nil
 }
 
 func (d *Database) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	d.logQuery(ctx, query, args...)
+	d.logQuery(ctx, query, nil, args...)
 	return d.db.QueryRowContext(ctx, query, args...)
 }
 
@@ -128,20 +138,33 @@ func (d *Database) ExecTx(ctx context.Context, tx *sql.Tx, query string, args ..
 	if tx == nil {
 		return d.Exec(ctx, query, args...)
 	}
-	return tx.ExecContext(ctx, query, args...)
+	result, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		d.logQuery(ctx, query, err, args...)
+		return nil, err
+	}
+	d.logQuery(ctx, query, nil, args...)
+	return result, nil
 }
 
 func (d *Database) QueryTx(ctx context.Context, tx *sql.Tx, query string, args ...interface{}) (*sql.Rows, error) {
 	if tx == nil {
 		return d.Query(ctx, query, args...)
 	}
-	return tx.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		d.logQuery(ctx, query, err, args...)
+		return nil, err
+	}
+	d.logQuery(ctx, query, nil, args...)
+	return rows, nil
 }
 
 func (d *Database) QueryRowTx(ctx context.Context, tx *sql.Tx, query string, args ...interface{}) *sql.Row {
 	if tx == nil {
 		return d.QueryRow(ctx, query, args...)
 	}
+	d.logQuery(ctx, query, nil, args...)
 	return tx.QueryRowContext(ctx, query, args...)
 }
 
@@ -152,18 +175,18 @@ func (d *Database) PrepareTx(ctx context.Context, tx *sql.Tx, query string) (*sq
 	return tx.PrepareContext(ctx, query)
 }
 
-func (d *Database) logQuery(ctx context.Context, query string, args ...interface{}) {
+func (d *Database) logQuery(ctx context.Context, query string, err error, args ...interface{}) {
 	logger.NewLogger().
 		WithContext(ctx).
 		With("query", query).
 		With("args", args).
+		With("error", err).
 		With("query_parsed", d.parseSQL(query, args...)).
 		Info("Executing query")
 }
 
 func (d *Database) parseSQL(query string, args ...interface{}) string {
 	for i, arg := range args {
-		fmt.Println(reflect.TypeOf(arg).Kind())
 		if reflect.TypeOf(arg).Kind() == reflect.Pointer {
 			if reflect.ValueOf(arg).IsNil() {
 				arg = nil
@@ -181,24 +204,22 @@ func (d *Database) parseSQL(query string, args ...interface{}) string {
 
 		switch v := arg.(type) {
 		case string:
-			query = strings.ReplaceAll(query, statementSymbol, v)
+			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("'%s'", v))
 		case int, int8, int16, int32, int64:
 			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v))
 		case float64:
 			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%f", v))
 		case time.Time:
-			query = strings.ReplaceAll(query, statementSymbol, v.Format("2006-01-02 15:04:05"))
+			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("'%s'", v.Format("2006-01-02 15:04:05")))
 		case bool:
 			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%t", v))
-		case nil:
-			query = strings.ReplaceAll(query, statementSymbol, "NULL")
 		case []byte:
 			query = strings.ReplaceAll(query, statementSymbol, string(v))
 		case byte:
 			query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("%d", v))
 		case sql.NullString:
 			if v.Valid {
-				query = strings.ReplaceAll(query, statementSymbol, v.String)
+				query = strings.ReplaceAll(query, statementSymbol, fmt.Sprintf("'%s'", v.String))
 			} else {
 				query = strings.ReplaceAll(query, statementSymbol, "NULL")
 			}

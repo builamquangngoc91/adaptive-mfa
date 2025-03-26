@@ -57,15 +57,22 @@ func WithAppError(err error, code Code) AppError {
 	}
 }
 
+func AppErrorFromCode(code Code) AppError {
+	return AppError{
+		code: code,
+		err:  errors.New(mapCodeToMessage[code]),
+	}
+}
+
 var (
-	ErrorUsernameOrPasswordInvalid AppError = AppError{code: CodeUsernameOrPasswordInvalid}
-	ErrorInvalidMFAReferenceID     AppError = AppError{code: CodeInvalidMFAReferenceID}
-	ErrorInvalidMFAPrivateKey      AppError = AppError{code: CodeInvalidMFAPrivateKey}
-	ErrorInvalidMFACode            AppError = AppError{code: CodeInvalidMFACode}
-	ErrorMFAForPhoneNotFound       AppError = AppError{code: CodeMFAForPhoneNotFound}
-	ErrorMFAForEmailNotFound       AppError = AppError{code: CodeMFAForEmailNotFound}
-	ErrorInternalServerError       AppError = AppError{code: CodeInternalServerError}
-	ErrorCacheError                AppError = AppError{code: CodeCacheError}
-	ErrorSendSMSFailed             AppError = AppError{code: CodeSendSMSFailed}
-	ErrorSendEmailFailed           AppError = AppError{code: CodeSendEmailFailed}
+	ErrorUsernameOrPasswordInvalid AppError = AppErrorFromCode(CodeUsernameOrPasswordInvalid)
+	ErrorInvalidMFAReferenceID     AppError = AppErrorFromCode(CodeInvalidMFAReferenceID)
+	ErrorInvalidMFAPrivateKey      AppError = AppErrorFromCode(CodeInvalidMFAPrivateKey)
+	ErrorInvalidMFACode            AppError = AppErrorFromCode(CodeInvalidMFACode)
+	ErrorMFAForPhoneNotFound       AppError = AppErrorFromCode(CodeMFAForPhoneNotFound)
+	ErrorMFAForEmailNotFound       AppError = AppErrorFromCode(CodeMFAForEmailNotFound)
+	ErrorInternalServerError       AppError = AppErrorFromCode(CodeInternalServerError)
+	ErrorCacheError                AppError = AppErrorFromCode(CodeCacheError)
+	ErrorSendSMSFailed             AppError = AppErrorFromCode(CodeSendSMSFailed)
+	ErrorSendEmailFailed           AppError = AppErrorFromCode(CodeSendEmailFailed)
 )

@@ -23,6 +23,7 @@ type UserLoginLog struct {
 	LoginStatus     sql.NullString
 	IsImpersonation bool
 	Attempts        int
+	RequiredMFA     bool
 	CreatedAt       time.Time
 	UpdatedAt       sql.NullTime
 	DeletedAt       sql.NullTime
@@ -58,4 +59,11 @@ func (m *UserLoginMetadata) Scan(value interface{}) error {
 		return errors.New("type assertion to []byte failed")
 	}
 	return json.Unmarshal(metadata, m)
+}
+
+type UserLoginLogAnalysis struct {
+	LatestSuccessFromIP sql.NullTime
+	LatestSuccess       sql.NullTime
+	CountAttemptsFromIP sql.NullInt64
+	CountAttempts       sql.NullInt64
 }

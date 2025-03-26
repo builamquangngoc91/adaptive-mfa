@@ -130,6 +130,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			resp := results[0].Interface()
 			respErr := results[1].Interface()
+			fmt.Println("abc: ", respErr)
 			if _err, ok := respErr.(appError.AppError); ok && respErr != nil {
 				logger.NewLogger().
 					WithContext(ctx).

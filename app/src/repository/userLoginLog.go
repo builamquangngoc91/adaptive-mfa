@@ -11,6 +11,7 @@ import (
 
 type IUserLoginLogRepository interface {
 	Create(ctx context.Context, tx *sql.Tx, userLoginLog *model.UserLoginLog) error
+	GetAnalysis(ctx context.Context, tx *sql.Tx, userID, ipAddress string) (*model.UserLoginLogAnalysis, error)
 }
 
 type UserLoginLogRepository struct {
@@ -36,9 +37,10 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 			login_status,
 			is_impersonation,
 			attempts,
+			required_mfa,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
 	`
 	result, err := r.db.ExecTx(ctx, tx, command,
 		userLoginLog.ID,
@@ -53,6 +55,7 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 		userLoginLog.LoginStatus,
 		userLoginLog.IsImpersonation,
 		userLoginLog.Attempts,
+		userLoginLog.RequiredMFA,
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -68,4 +71,55 @@ func (r *UserLoginLogRepository) Create(ctx context.Context, tx *sql.Tx, userLog
 		return errors.New("failed to create user login log")
 	}
 	return nil
+}
+
+func (r *UserLoginLogRepository) GetAnalysis(ctx context.Context, tx *sql.Tx, userID, ipAddress string) (*model.UserLoginLogAnalysis, error) {
+	query := `
+		WITH latest_success_from_ip AS (
+			SELECT ull.created_at
+			FROM user_login_logs ull 
+			WHERE ull.user_id = $1
+				AND ull.ip_address = $2
+				AND ull.login_status = 'success'
+				AND NOT (ull.login_type = 'basic_auth' AND ull.required_mfa IS TRUE)
+			ORDER BY created_at DESC
+			LIMIT 1
+		),
+		latest_success AS (
+			SELECT created_at
+			FROM user_login_logs ull 
+			WHERE ull.user_id = $1
+				AND ull.login_status = 'success'
+				AND NOT (ull.login_type = 'basic_auth' AND ull.required_mfa IS TRUE)
+			ORDER BY created_at DESC
+			LIMIT 1
+		),
+		count_attempts_from_ip AS (
+			SELECT count(ull.id) AS attempt_count
+			FROM user_login_logs ull 
+			WHERE ull.user_id = $1
+				AND ull.ip_address = $2
+				AND ull.login_status = 'fail'
+				AND ull.created_at > (SELECT created_at FROM latest_success_from_ip)
+		),
+		count_attempts AS (
+			SELECT count(ull.id) AS attempt_count
+			FROM user_login_logs ull 
+			WHERE ull.user_id = $1
+				AND ull.login_status = 'fail'
+				AND ull.created_at > (SELECT created_at FROM latest_success)
+		)
+		SELECT
+			(SELECT created_at FROM latest_success_from_ip) AS latest_success_from_ip,
+			(SELECT created_at FROM latest_success) AS latest_success,
+			(SELECT attempt_count FROM count_attempts_from_ip) AS count_attempts_from_ip,
+			(SELECT attempt_count FROM count_attempts) AS count_attempts
+	`
+	var userLoginLogAnalysis model.UserLoginLogAnalysis
+	if err := r.db.QueryRowTx(ctx, tx, query, userID, ipAddress).
+		Scan(&userLoginLogAnalysis.LatestSuccessFromIP, &userLoginLogAnalysis.LatestSuccess, &userLoginLogAnalysis.CountAttemptsFromIP, &userLoginLogAnalysis.CountAttempts); err != nil {
+		return nil, err
+	}
+
+	return &userLoginLogAnalysis, nil
 }

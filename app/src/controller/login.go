@@ -30,7 +30,7 @@ import (
 
 type ILoginController interface {
 	Login(context.Context, *domain.LoginRequest) (*domain.LoginResponse, error)
-	LoginWithMFA(context.Context, *domain.LoginWithMFARequest) (*domain.LoginResponse, error)
+	LoginWithMFA(context.Context, *domain.LoginWithMFARequest) (*domain.LoginWithMFAResponse, error)
 	SendLoginEmailCode(context.Context, *domain.SendLoginEmailCodeRequest) (*domain.SendLoginEmailCodeResponse, error)
 	VerifyLoginEmailCode(context.Context, *domain.VerifyLoginEmailCodeRequest) (*domain.VerifyLoginEmailCodeResponse, error)
 	SendLoginPhoneCode(context.Context, *domain.SendLoginPhoneCodeRequest) (*domain.SendLoginPhoneCodeResponse, error)
@@ -79,14 +79,15 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 			userID = database.NewNullString(user.ID)
 		}
 		userLoginLog := &model.UserLoginLog{
-			ID:        uuid.New().String(),
-			RequestID: common.GetRequestID(ctx),
-			UserID:    userID,
-			IPAddress: database.NewNullString(common.GetIPAddress(ctx)),
-			UserAgent: database.NewNullString(common.GetUserAgent(ctx)),
-			DeviceID:  database.NewNullString(common.GetDeviceID(ctx)),
-			LoginType: string(model.UserLoginTypeBasicAuth),
-			CreatedAt: time.Now(),
+			ID:          uuid.New().String(),
+			RequestID:   common.GetRequestID(ctx),
+			UserID:      userID,
+			IPAddress:   database.NewNullString(common.GetIPAddress(ctx)),
+			UserAgent:   database.NewNullString(common.GetUserAgent(ctx)),
+			DeviceID:    database.NewNullString(common.GetDeviceID(ctx)),
+			LoginType:   string(model.UserLoginTypeBasicAuth),
+			RequiredMFA: requiredMFA,
+			CreatedAt:   time.Now(),
 		}
 
 		switch err {
@@ -99,10 +100,10 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 			return
 		}
 
-		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+		if _err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); _err != nil {
 			logger.NewLogger().
 				WithContext(ctx).
-				With("error", err).
+				With("error", _err).
 				Error("Failed to create user login log")
 		}
 	}()
@@ -132,8 +133,12 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	if h.isRequiredMFA() {
-		requiredMFA = true
+	requiredMFA, err = h.isRequiredMFA(ctx, user.ID, common.GetIPAddress(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	if requiredMFA {
 		return &domain.LoginResponse{
 			RequiredMFA: requiredMFA,
 			ReferenceID: requestID,
@@ -151,7 +156,7 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 	}, nil
 }
 
-func (h *LoginController) LoginWithMFA(ctx context.Context, req *domain.LoginWithMFARequest) (_ *domain.LoginResponse, err error) {
+func (h *LoginController) LoginWithMFA(ctx context.Context, req *domain.LoginWithMFARequest) (_ *domain.LoginWithMFAResponse, err error) {
 	var (
 		metadata domain.MFAMetadata
 		user     *model.User
@@ -185,10 +190,10 @@ func (h *LoginController) LoginWithMFA(ctx context.Context, req *domain.LoginWit
 			return
 		}
 
-		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+		if _err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); _err != nil {
 			logger.NewLogger().
 				WithContext(ctx).
-				With("error", err).
+				With("error", _err).
 				Error("Failed to create user login log")
 		}
 	}()
@@ -224,7 +229,7 @@ func (h *LoginController) LoginWithMFA(ctx context.Context, req *domain.LoginWit
 		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
-	return &domain.LoginResponse{
+	return &domain.LoginWithMFAResponse{
 		Token: token,
 	}, nil
 }
@@ -304,10 +309,10 @@ func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.
 			return
 		}
 
-		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+		if _err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); _err != nil {
 			logger.NewLogger().
 				WithContext(ctx).
-				With("error", err).
+				With("error", _err).
 				Error("Failed to create user login log")
 		}
 	}()
@@ -395,10 +400,10 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 			return
 		}
 
-		if err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); err != nil {
+		if _err := h.userLoginLogRepository.Create(ctx, nil, userLoginLog); _err != nil {
 			logger.NewLogger().
 				WithContext(ctx).
-				With("error", err).
+				With("error", _err).
 				Error("Failed to create user login log")
 		}
 	}()
@@ -428,6 +433,29 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 	}, nil
 }
 
-func (h *LoginController) isRequiredMFA() bool {
-	return true
+func (h *LoginController) isRequiredMFA(ctx context.Context, userID string, ipAddress string) (bool, error) {
+	analysis, err := h.userLoginLogRepository.GetAnalysis(ctx, nil, userID, ipAddress)
+	if err != nil {
+		return false, appError.WithAppError(err, appError.CodeInternalServerError)
+	}
+
+	fmt.Println(analysis)
+
+	if !analysis.LatestSuccess.Valid {
+		return true, nil
+	}
+
+	if !analysis.LatestSuccessFromIP.Valid || analysis.LatestSuccessFromIP.Time.Before(time.Now().Add(-time.Hour*24)) {
+		return true, nil
+	}
+
+	if analysis.CountAttemptsFromIP.Int64 >= 5 {
+		return true, nil
+	}
+
+	if analysis.CountAttempts.Int64 >= 10 {
+		return true, nil
+	}
+
+	return false, nil
 }
