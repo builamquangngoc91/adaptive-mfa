@@ -22,6 +22,7 @@ type CacheConfig struct {
 	DB   int
 }
 
+//go:generate mockgen -source=cache.go -destination=./mock/cache.go -package=mock
 type ICache interface {
 	Get(ctx context.Context, key string) (string, error)
 	GetJSON(ctx context.Context, key string, value interface{}) error
