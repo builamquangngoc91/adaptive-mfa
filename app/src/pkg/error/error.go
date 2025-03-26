@@ -20,6 +20,7 @@ const (
 	CodeCacheError                Code = 105000002
 	CodeSendSMSFailed             Code = 105000003
 	CodeSendEmailFailed           Code = 105000004
+	CodeTOTPMethodAlreadyExists   Code = 104000009
 )
 
 type responseInfo struct {
@@ -63,6 +64,10 @@ var mapCodeToMessage = map[Code]responseInfo{
 	CodeSendEmailFailed: {
 		Message:    "send email failed",
 		StatusCode: http.StatusInternalServerError,
+	},
+	CodeTOTPMethodAlreadyExists: {
+		Message:    "totp method already exists",
+		StatusCode: http.StatusBadRequest,
 	},
 }
 
@@ -117,4 +122,5 @@ var (
 	ErrorCacheError                AppError = AppErrorFromCode(CodeCacheError)
 	ErrorSendSMSFailed             AppError = AppErrorFromCode(CodeSendSMSFailed)
 	ErrorSendEmailFailed           AppError = AppErrorFromCode(CodeSendEmailFailed)
+	ErrorTOTPMethodAlreadyExists   AppError = AppErrorFromCode(CodeTOTPMethodAlreadyExists)
 )

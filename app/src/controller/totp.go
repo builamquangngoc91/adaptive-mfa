@@ -10,6 +10,7 @@ import (
 	"adaptive-mfa/pkg/cache"
 	"adaptive-mfa/pkg/common"
 	"adaptive-mfa/pkg/database"
+	appError "adaptive-mfa/pkg/error"
 	"adaptive-mfa/repository"
 
 	"github.com/google/uuid"
@@ -43,20 +44,20 @@ func (c *TOTPController) AddTOTPMethod(ctx context.Context, req *domain.AddTOTPM
 
 	existingUserMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, userID, string(model.UserMFATypeOTP))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if existingUserMFA != nil {
-		return nil, errors.New("TOTP method already exists")
+		return nil, appError.ErrorTOTPMethodAlreadyExists
 	}
 
 	totpKey, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "Adaptive MFA",
+		Issuer:      "Adaptive MFA", // TODO: get from config
 		AccountName: userID,
 		SecretSize:  12,
 	})
 	if err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if err := c.userMFARepository.Create(ctx, nil, &model.UserMFA{
@@ -67,7 +68,7 @@ func (c *TOTPController) AddTOTPMethod(ctx context.Context, req *domain.AddTOTPM
 			Secret: totpKey.Secret(),
 		},
 	}); err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	response := &domain.AddTOTPMethodResponse{
@@ -82,15 +83,15 @@ func (c *TOTPController) DeleteTOTPMethod(ctx context.Context) (*domain.DeleteTO
 	userID := common.GetUserID(ctx)
 	userMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, userID, string(model.UserMFATypeOTP))
 	if err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if userMFA == nil {
-		return nil, errors.New("TOTP method not found")
+		return nil, appError.ErrorMFAForEmailNotFound
 	}
 
 	if err := c.userMFARepository.SoftDelete(ctx, nil, userMFA.ID); err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	return &domain.DeleteTOTPMethodResponse{}, nil
@@ -99,42 +100,40 @@ func (c *TOTPController) DeleteTOTPMethod(ctx context.Context) (*domain.DeleteTO
 func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyTOTPCodeRequest) (*domain.VerifyTOTPCodeResponse, error) {
 	var mfaMetadata domain.MFAMetadata
 	if err := c.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
 	userMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, mfaMetadata.UserID, string(model.UserMFATypeOTP))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	if userMFA == nil {
-		return nil, errors.New("TOTP method not found")
+		return nil, appError.ErrorMFAForEmailNotFound
 	}
 
 	valid := totp.Validate(req.Code, userMFA.Metadata.Secret)
 	if !valid {
-		return nil, errors.New("invalid TOTP code")
+		return nil, appError.ErrorInvalidMFACode
 	}
 
 	mfaMetadata.Type = domain.UserLoginTypeMFATOTP
 	mfaMetadata.PrivateKey = randstr.Hex(16)
 	if err := c.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true); err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	response := &domain.VerifyTOTPCodeResponse{
+	return &domain.VerifyTOTPCodeResponse{
 		ReferenceID: req.ReferenceID,
 		PrivateKey:  mfaMetadata.PrivateKey,
-	}
-
-	return response, nil
+	}, nil
 }
 
 func (c *TOTPController) ListTOTPMethods(ctx context.Context) (*domain.ListTOTPMethodsResponse, error) {
 	userID := common.GetUserID(ctx)
 	userMFAs, err := c.userMFARepository.ListByUserID(ctx, nil, userID)
 	if err != nil {
-		return nil, err
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	methods := make([]string, len(userMFAs))
