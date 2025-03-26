@@ -96,12 +96,22 @@ func callApiLogin(b *testing.B, email, password string) {
 }
 
 func BenchmarkLogin(b *testing.B) {
+	ids := make([]string, b.N)
 	for i := 0; i < b.N; i++ {
-		fullname := fmt.Sprintf("test%s", uuid.New().String())
-		email := fmt.Sprintf("test%s@test.com", uuid.New().String())
+		id := uuid.New().String()
+		fullname := fmt.Sprintf("test%s", id)
+		email := fmt.Sprintf("test%s@test.com", id)
 		password := "password"
+		ids[i] = id
 
 		callApiRegister(b, fullname, email, password)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		id := ids[i]
+		email := fmt.Sprintf("test%s@test.com", id)
+		password := "password"
 		callApiLogin(b, email, password)
 	}
 }
