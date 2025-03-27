@@ -14,45 +14,45 @@ cd adaptive-mfa
 cd app
 ```
 
-3. Start Server
+### 3. Start Server
 
-# Start all services (App, Postgres, Redis, Prometheus)
+## Start all services (App, Postgres, Redis, Prometheus)
 ```
 make up
 ```
 
-# View logs
+## View logs
 ```
 make log
 ```
 
-# ⚠️ NOTE:
-# DB initialization may take time on the first run.
-# If startup fails, try:
+## ⚠️ NOTE:
+## DB initialization may take time on the first run.
+## If startup fails, try:
 ```
 make down
 make up
 ```
 
-4. Database Migration
+### 4. Database Migration
 
-# Run PostgreSQL migrations
+## Run PostgreSQL migrations
 ```
 make migrate-up
 
 make migrate-up-test
 ```
 
-5. Seed Data (Optional)
+### 5. Seed Data (Optional)
 
-# Insert demo/test seed data
+## Insert demo/test seed data
 ```
 make seed
 ```
 
 ⸻
 
-🔌 API Connectivity Check
+### 🔌 API Connectivity Check
 
 You can test the system using Postman, Insomnia, or curl.
 
@@ -84,7 +84,7 @@ Use reference_id in subsequent MFA verification requests.
 
 ⸻
 
-📈 Benchmarking & Monitoring
+### 📈 Benchmarking & Monitoring
 
 Prometheus is integrated to provide performance and usage metrics.
 
@@ -116,32 +116,32 @@ wrk -t4 -c100 -d30s http://localhost:8081/auth/login
 ```
 ⸻
 
-🛠 Developer Commands
+### 🛠 Developer Commands
 
-# Run all tests
+## Run all tests
 ```
 make test
 ```
 
-# Run benchmark tests
+## Run benchmark tests
 ```
 make bench
 ```
-# Format code lint (WIP)
+## Format code lint (WIP)
 
 ```
 make lint
 ```
 
-# Generate mocks (if used)
+## Generate mocks (if used)
 ```
 make mockgen
 ```
 
 ⸻
 
-📚 References
-	•	README.md: Project overview and architecture
-	•	docs/: (Optional) Contains system diagrams, risk logic, and C4 breakdown
+# 📚 References
+- README.md: Project overview and architecture
+- docs/: (Optional) Contains system diagrams, risk logic, and C4 breakdown
 
 ⸻
