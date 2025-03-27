@@ -95,11 +95,11 @@ Access via browser:
 ```http://localhost:9090```
 
 2. Useful Prometheus Metrics
-	•	http_requests_total – total API calls
-	•	mfa_challenges_total – number of MFA challenges
-	•	risk_evaluation_duration_seconds – latency of risk assessments
+   - http_requests_total – total API calls
+   - mfa_challenges_total – number of MFA challenges
+   - risk_evaluation_duration_seconds – latency of risk assessments
 
-3. Load Testing (Optional)
+4. Load Testing (Optional)
 
 You can simulate traffic using tools like:
 
@@ -114,7 +114,6 @@ wrk
 ```
 wrk -t4 -c100 -d30s http://localhost:8081/auth/login
 ```
-
 ⸻
 
 🛠 Developer Commands
@@ -128,7 +127,6 @@ make test
 ```
 make bench
 ```
-
 # Format code lint (WIP)
 
 ```
