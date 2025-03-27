@@ -10,6 +10,9 @@ down:
 build:
 	docker compose -f docker/local.docker-compose.yaml build
 
+test:
+	docker compose -f docker/local.docker-compose.yaml run --rm amfa-test go test -v ./...
+
 log:
 	docker compose -f docker/local.docker-compose.yaml logs -f amfa
 
