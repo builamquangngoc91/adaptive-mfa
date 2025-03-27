@@ -6,6 +6,7 @@ import (
 	"context"
 )
 
+//go:generate mockgen -source=sms.go -destination=./mock/sms.go -package=mock
 type ISMS interface {
 	Ping(ctx context.Context) error
 	SendSMS(ctx context.Context, phone string, message string) error

@@ -22,7 +22,6 @@ import (
 	"adaptive-mfa/server"
 
 	_ "github.com/lib/pq"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -70,7 +69,7 @@ func main() {
 	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository, userLoginLogRepository, emailService, smsService)
 	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository, emailService, smsService)
 	logoutController := controller.NewLogoutController(cache)
-	totpController := controller.NewTOTPController(db, userMFARepository, cache)
+	totpController := controller.NewTOTPController(cfg, db, userMFARepository, cache)
 	hackedController := controller.NewHackedController(cfg, cache, userLoginLogRepository)
 
 	v1Group := s.Router.Group("/v1")

@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-// TODO: Add logger
-
+//go:generate mockgen -source=db.go -destination=./mock/db.go -package=mock
 type IDatabase interface {
 	GetDB() *sql.DB
 	Ping(ctx context.Context) error

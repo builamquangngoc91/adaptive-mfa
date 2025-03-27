@@ -7,6 +7,7 @@ import (
 	"fmt"
 )
 
+//go:generate mockgen -source=email.go -destination=./mock/email.go -package=mock
 type IEmail interface {
 	Ping(ctx context.Context) error
 	SendEmail(ctx context.Context, email string, subject string, body string) error

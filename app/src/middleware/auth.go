@@ -31,7 +31,7 @@ func AuthMiddleware(
 			}
 
 			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-				return []byte(cfg.Jwt), nil
+				return []byte(cfg.JwtSecret), nil
 			})
 			if err != nil {
 				http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)

@@ -15,10 +15,11 @@ import (
 type Config struct {
 	Database   *database.DatabaseConfig
 	Cache      *cache.CacheConfig
-	Jwt        string
+	JwtSecret  string
 	DisavowURL string
 	Port       int
 	Env        string
+	TOTP       *TOTPConfig
 }
 
 func LoadConfig() (*Config, error) {
@@ -34,10 +35,11 @@ func LoadConfig() (*Config, error) {
 	return &Config{
 		Database:   LoadDatabaseConfig(),
 		Cache:      LoadCacheConfig(),
-		Jwt:        os.Getenv("AMFA_JWT_SECRET"),
+		JwtSecret:  os.Getenv("AMFA_JWT_SECRET"),
 		DisavowURL: os.Getenv("AMFA_DISAVOW_URL"),
 		Port:       port,
 		Env:        os.Getenv("AMFA_ENV"),
+		TOTP:       LoadTOTPConfig(),
 	}, nil
 }
 
@@ -78,5 +80,21 @@ func LoadCacheConfig() *cache.CacheConfig {
 		Host: os.Getenv("AMFA_CACHE_HOST"),
 		Port: os.Getenv("AMFA_CACHE_PORT"),
 		DB:   db,
+	}
+}
+
+type TOTPConfig struct {
+	Issuer     string
+	SecretSize uint
+}
+
+func LoadTOTPConfig() *TOTPConfig {
+	secretSize, err := strconv.Atoi(os.Getenv("AMFA_TOTP_SECRET_SIZE"))
+	if err != nil {
+		secretSize = 12
+	}
+	return &TOTPConfig{
+		Issuer:     os.Getenv("AMFA_TOTP_ISSUER"),
+		SecretSize: uint(secretSize),
 	}
 }

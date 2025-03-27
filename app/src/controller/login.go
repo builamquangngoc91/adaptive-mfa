@@ -109,6 +109,8 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		}
 	}()
 
+	// TODO: rate limit
+
 	requestID := common.GetRequestID(ctx)
 	user, err = h.userRepository.GetByUsername(ctx, nil, req.Username)
 	if err != nil && err != sql.ErrNoRows {
@@ -240,7 +242,7 @@ func (h *LoginController) generateToken(ctx context.Context, user *model.User) (
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,
 		"exp": exp.Unix(),
-	}).SignedString([]byte(h.cfg.Jwt))
+	}).SignedString([]byte(h.cfg.JwtSecret))
 	if err != nil {
 		return "", err
 	}

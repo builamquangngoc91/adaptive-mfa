@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"adaptive-mfa/config"
 	"adaptive-mfa/domain"
 	"adaptive-mfa/model"
 	"adaptive-mfa/pkg/cache"
@@ -27,13 +28,15 @@ type ITOTPController interface {
 }
 
 type TOTPController struct {
+	cfg               *config.Config
 	db                database.IDatabase
 	cache             cache.ICache
 	userMFARepository repository.IUserMFARepository
 }
 
-func NewTOTPController(db database.IDatabase, userMFARepository repository.IUserMFARepository, cache cache.ICache) *TOTPController {
+func NewTOTPController(cfg *config.Config, db database.IDatabase, userMFARepository repository.IUserMFARepository, cache cache.ICache) *TOTPController {
 	return &TOTPController{
+		cfg:               cfg,
 		db:                db,
 		cache:             cache,
 		userMFARepository: userMFARepository,
@@ -53,9 +56,9 @@ func (c *TOTPController) AddTOTPMethod(ctx context.Context, req *domain.AddTOTPM
 	}
 
 	totpKey, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "Adaptive MFA", // TODO: get from config
+		Issuer:      c.cfg.TOTP.Issuer,
 		AccountName: userID,
-		SecretSize:  12,
+		SecretSize:  c.cfg.TOTP.SecretSize,
 	})
 	if err != nil {
 		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
@@ -74,7 +77,7 @@ func (c *TOTPController) AddTOTPMethod(ctx context.Context, req *domain.AddTOTPM
 
 	response := &domain.AddTOTPMethodResponse{
 		Secret: totpKey.Secret(),
-		Issuer: "Adaptive MFA",
+		Issuer: c.cfg.TOTP.Issuer,
 	}
 
 	return response, nil
