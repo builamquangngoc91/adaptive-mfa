@@ -128,7 +128,7 @@ make test
 
 ## Run benchmark tests
 ```
-make bench
+make benchmark
 ```
 ## Format code lint (WIP)
 

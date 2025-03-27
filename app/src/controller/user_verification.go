@@ -1,6 +1,13 @@
 package controller
 
 import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"math/rand"
+	"time"
+
 	"adaptive-mfa/config"
 	"adaptive-mfa/domain"
 	"adaptive-mfa/model"
@@ -12,12 +19,6 @@ import (
 	"adaptive-mfa/pkg/ptr"
 	"adaptive-mfa/pkg/sms"
 	"adaptive-mfa/repository"
-	"context"
-	"database/sql"
-	"errors"
-	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/google/uuid"
 )
