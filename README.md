@@ -61,7 +61,7 @@ Example Login Request
 Endpoint
 ```
 
-POST http://localhost:8081/auth/login
+POST http://localhost:8082/auth/login
 
 Request Body
 
@@ -73,7 +73,7 @@ Request Body
 
 Using curl
 ```sh
-curl -X POST http://localhost:8081/auth/login \
+curl -X POST http://localhost:8082/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin@example.com", "password": "securepassword"}'
 ```
@@ -112,7 +112,7 @@ You can simulate traffic using tools like:
 
 ``` sh
 for i in {1..20}; do
-  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8081/auth/login \
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:808w/auth/login \
     -H "Content-Type: application/json" \
     -d '{"username": "admin@example.com", "password": "securepassword"}'
 done
