@@ -68,16 +68,20 @@ POST http://localhost:8082/auth/login
 Request Body
 
 {
-  "username": "admin@example.com",
-  "password": "securepassword"
+  "username": "ngoc",
+  "password": "password"
 }
 ```
 
 Using curl
 ```sh
-curl -X POST http://localhost:8082/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin@example.com", "password": "securepassword"}'
+curl --location 'localhost:8082/v1/auth/login' \
+    --header 'X-Real-IP: 192.167.0.1:1001' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "username": "ngoc",
+        "password": "password"
+    }'
 ```
 
 Example Response
@@ -114,9 +118,9 @@ You can simulate traffic using tools like:
 
 ``` sh
 for i in {1..20}; do
-  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:808w/auth/login \
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8082/auth/login \
     -H "Content-Type: application/json" \
-    -d '{"username": "admin@example.com", "password": "securepassword"}'
+    -d '{"username": "ngoc", "password": "password"}'
 done
 ```
 ⸻
