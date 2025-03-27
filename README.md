@@ -56,7 +56,7 @@ make seed
 
 You can test the system using Postman, Insomnia, or curl.
 
-File amfa.postman_collection.json contains all requests
+File ```amfa.postman_collection.json``` contains all requests
 
 Example Login Request
 
