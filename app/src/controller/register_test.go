@@ -35,8 +35,12 @@ func TestRegisterController_Register(t *testing.T) {
 	validate(t, &testcase{
 		name: "error: username is required",
 		ctx:  context.Background(),
-		req:  &domain.RegisterRequest{},
-		err:  appError.WithAppError(errors.New("username is required"), appError.CodeBadRequest),
+		req: &domain.RegisterRequest{
+			Fullname: "test",
+			Username: "",
+			Password: "password",
+		},
+		err: appError.WithAppError(errors.New("username is required"), appError.CodeBadRequest),
 		controller: func() IRegisterController {
 			ctrl := gomock.NewController(t)
 			cacheMock := cacheMock.NewMockICache(ctrl)
@@ -50,6 +54,7 @@ func TestRegisterController_Register(t *testing.T) {
 		name: "error: password is required",
 		ctx:  context.Background(),
 		req: &domain.RegisterRequest{
+			Fullname: "test",
 			Username: "test",
 		},
 		err: appError.WithAppError(errors.New("password is required"), appError.CodeBadRequest),

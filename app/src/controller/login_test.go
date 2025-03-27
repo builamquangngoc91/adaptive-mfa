@@ -2,12 +2,14 @@ package controller
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
 	"adaptive-mfa/config"
 	"adaptive-mfa/domain"
 	"adaptive-mfa/model"
+	"adaptive-mfa/pkg/cache"
 	cacheMock "adaptive-mfa/pkg/cache/mock"
 	"adaptive-mfa/pkg/common"
 	"adaptive-mfa/pkg/database"
@@ -50,7 +52,12 @@ func TestLoginController_Login(t *testing.T) {
 		},
 		loginController: func() ILoginController {
 			ctrl := gomock.NewController(t)
-			cfg := &config.Config{}
+			cfg := &config.Config{
+				RateLimit: &config.RateLimitConfig{
+					LoginAttemptsThreshold:    5,
+					LoginAttemptsLockDuration: time.Minute * 10,
+				},
+			}
 			_cacheMock := cacheMock.NewMockICache(ctrl)
 			userRepository := repositoryMock.NewMockIUserRepository(ctrl)
 			userMFARepository := repositoryMock.NewMockIUserMFARepository(ctrl)
@@ -68,19 +75,39 @@ func TestLoginController_Login(t *testing.T) {
 					HashPassword: string(hashPassword),
 				}, nil)
 
+			_cacheMock.
+				EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				Return("", cache.Nil)
+
+			_cacheMock.
+				EXPECT().
+				Del(gomock.Any(), gomock.Any()).
+				Return(nil)
+
+			userMFARepository.
+				EXPECT().
+				ListByUserID(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return([]*model.UserMFA{
+					{
+						UserID:  uuid.New().String(),
+						MFAType: model.UserMFATypeEmail,
+					},
+				}, nil)
+
 			userLoginLogRepository.
 				EXPECT().
 				GetAnalysis(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&model.UserLoginLogAnalysis{
 					CountDisavowedFromIP: database.NewNullInt64(0),
-					LatestSuccess:        database.NewNullTime(time.Now()),
+					LatestSuccess:        sql.NullTime{},
 					CountAttempts:        database.NewNullInt64(0),
 					CountAttemptsFromIP:  database.NewNullInt64(0),
 				}, nil)
 
 			_cacheMock.
 				EXPECT().
-				SetJSON(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Set(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil)
 
 			userLoginLogRepository.

@@ -108,7 +108,10 @@ func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyT
 
 	var mfaMetadata domain.MFAMetadata
 	if err := c.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
-		return nil, appError.WithAppError(err, appError.CodeCacheError)
+		if !errors.Is(err, cache.Nil) {
+			return nil, appError.WithAppError(err, appError.CodeCacheError)
+		}
+		return nil, appError.ErrorInvalidMFACode
 	}
 
 	userMFA, err := c.userMFARepository.GetByUserIDAndMFAType(ctx, nil, mfaMetadata.UserID, string(model.UserMFATypeOTP))

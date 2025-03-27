@@ -17,6 +17,7 @@ type ILogger interface {
 	Error(msg string, args ...any)
 	Debug(msg string, args ...any)
 	Warn(msg string, args ...any)
+	Fatal(msg string, args ...any)
 	WithContext(ctx context.Context) ILogger
 	With(key string, args ...any) ILogger
 }
@@ -70,4 +71,10 @@ func (l *logger) Debug(msg string, args ...any) {
 func (l *logger) Warn(msg string, args ...any) {
 	l.parseDataFromContext()
 	slog.With(slog.Any("metadata", l.metadata)).Warn(msg, args...)
+}
+
+func (l *logger) Fatal(msg string, args ...any) {
+	l.parseDataFromContext()
+	slog.With(slog.Any("metadata", l.metadata)).Error(msg, args...)
+	os.Exit(1)
 }
