@@ -71,6 +71,13 @@ Request Body
 }
 ```
 
+Using curl
+```sh
+curl -X POST http://localhost:8081/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@example.com", "password": "securepassword"}'
+```
+
 Example Response
 ```
 
@@ -103,11 +110,12 @@ Access via browser:
 
 You can simulate traffic using tools like:
 
-**curl**
-```
-curl -X POST http://localhost:8081/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin@example.com", "password": "securepassword"}'
+``` sh
+for i in {1..20}; do
+  curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8081/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"username": "admin@example.com", "password": "securepassword"}'
+done
 ```
 ⸻
 
