@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-//go:generate mockgen -source=userLoginLog.go -destination=./mock/userLoginLog.go -package=mock
+//go:generate mockgen -source=user_login_log.go -destination=./mock/user_login_log.go -package=mock
 type IUserLoginLogRepository interface {
 	Create(ctx context.Context, tx *sql.Tx, userLoginLog *model.UserLoginLog) error
 	GetAnalysis(ctx context.Context, tx *sql.Tx, userID, ipAddress string) (*model.UserLoginLogAnalysis, error)

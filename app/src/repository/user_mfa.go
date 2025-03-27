@@ -10,7 +10,7 @@ import (
 	"adaptive-mfa/pkg/database"
 )
 
-//go:generate mockgen -source=userMfa.go -destination=./mock/userMfa.go -package=mock
+//go:generate mockgen -source=user_mfa.go -destination=./mock/user_mfa.go -package=mock
 type IUserMFARepository interface {
 	Create(ctx context.Context, tx *sql.Tx, userMFA *model.UserMFA) error
 	ListByUserID(ctx context.Context, tx *sql.Tx, userID string) ([]*model.UserMFA, error)

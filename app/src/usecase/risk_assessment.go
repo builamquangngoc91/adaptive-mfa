@@ -17,7 +17,7 @@ const (
 	RiskAssessmentLevelHigh
 )
 
-//go:generate mockgen -source=$GOFILE -destination=mock/riskAssessmentUsecase.go -package=mock
+//go:generate mockgen -source=risk_assessment.go -destination=mock/risk_assessment.go -package=mock
 type IRiskAssessmentUsecase interface {
 	CalculateScore(ctx context.Context, arg interface{}) (RiskAssessmentLevel, error)
 }
