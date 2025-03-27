@@ -50,6 +50,8 @@ func main() {
 	prometheus.MustRegister(monitor.LatencySummary)
 	prometheus.MustRegister(monitor.SMSSendCounter)
 	prometheus.MustRegister(monitor.EmailSendCounter)
+	prometheus.MustRegister(monitor.LoginFailedCounter)
+	prometheus.MustRegister(monitor.LoginFailedWithIPCounter)
 
 	userRepository := repository.NewUserRepository(db)
 	userMFARepository := repository.NewUserMFARepository(db)

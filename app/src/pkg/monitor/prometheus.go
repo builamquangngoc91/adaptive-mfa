@@ -3,6 +3,16 @@ package monitor
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
+	LoginFailedWithIPCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "login_failed_total_with_ip",
+		Help: "Total number of login failed with ip address",
+	}, []string{"user_id", "ip_address"})
+
+	LoginFailedCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "login_failed_total",
+		Help: "Total number of login failed",
+	}, []string{"user_id"})
+
 	HttpRequestCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "http_requests_total",
 		Help: "Total number of HTTP requests received",
