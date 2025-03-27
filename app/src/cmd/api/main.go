@@ -55,14 +55,6 @@ func main() {
 	userMFARepository := repository.NewUserMFARepository(db)
 	userLoginLogRepository := repository.NewUserLoginLogRepository(db)
 
-	s := server.NewServer(cfg.Port)
-	s.Router.Get("/health", func(ctx context.Context, req any) (any, error) {
-		return "Health check OK", nil
-	})
-	s.Router.Use(middleware.PrometheusMiddleware)
-	s.Router.Use(middleware.RecoveryMiddleware)
-	s.Router.Get("/metrics", promhttp.Handler())
-
 	emailService := email.NewEmail()
 	smsService := sms.NewSMS()
 	registerController := controller.NewRegisterController(cache, userRepository)
@@ -71,6 +63,14 @@ func main() {
 	logoutController := controller.NewLogoutController(cache)
 	totpController := controller.NewTOTPController(cfg, db, userMFARepository, cache)
 	hackedController := controller.NewHackedController(cfg, cache, userLoginLogRepository)
+	healthController := controller.NewHealthController()
+
+	s := server.NewServer(cfg.Port)
+
+	s.Router.Use(middleware.PrometheusMiddleware)
+	s.Router.Use(middleware.RecoveryMiddleware)
+	s.Router.Get("/health", healthController.Health)
+	s.Router.Get("/metrics", promhttp.Handler())
 
 	v1Group := s.Router.Group("/v1")
 	v1Group.Use(middleware.RequestIDMiddleware)
