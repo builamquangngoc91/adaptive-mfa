@@ -523,17 +523,26 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 }
 
 func (h *LoginController) isRequiredMFA(ctx context.Context, userID string, ipAddress string) (bool, error) {
+	userMFAs, err := h.userMFARepository.ListByUserID(ctx, nil, userID)
+	if err != nil {
+		return false, appError.WithAppError(err, appError.CodeInternalServerError)
+	}
+
+	if len(userMFAs) == 0 {
+		return false, nil
+	}
+
 	analysis, err := h.userLoginLogRepository.GetAnalysis(ctx, nil, userID, ipAddress)
 	if err != nil {
 		return false, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
-	if !analysis.LatestSuccess.Valid {
-		return false, nil
-	}
-
 	if !analysis.CountDisavowedFromIP.Valid || analysis.CountDisavowedFromIP.Int64 > 0 {
 		return true, nil
+	}
+
+	if !analysis.LatestSuccess.Valid {
+		return false, nil
 	}
 
 	if analysis.CountAttemptsFromIP.Int64 >= 5 {
