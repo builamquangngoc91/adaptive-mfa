@@ -20,6 +20,7 @@ import (
 	"adaptive-mfa/pkg/sms"
 	"adaptive-mfa/repository"
 	"adaptive-mfa/server"
+	"adaptive-mfa/usecase"
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
@@ -57,10 +58,12 @@ func main() {
 	userMFARepository := repository.NewUserMFARepository(db)
 	userLoginLogRepository := repository.NewUserLoginLogRepository(db)
 
+	riskAssessmentUsecase := usecase.NewRiskAssessmentUsecase(userMFARepository, userLoginLogRepository)
+
 	emailService := email.NewEmail()
 	smsService := sms.NewSMS()
 	registerController := controller.NewRegisterController(cache, userRepository)
-	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository, userLoginLogRepository, emailService, smsService)
+	loginController := controller.NewLoginController(cfg, cache, userRepository, userMFARepository, userLoginLogRepository, riskAssessmentUsecase, emailService, smsService)
 	userVerificationController := controller.NewUserVerificationController(cfg, db, cache, userRepository, userMFARepository, emailService, smsService)
 	logoutController := controller.NewLogoutController(cache)
 	totpController := controller.NewTOTPController(cfg, db, userMFARepository, cache)

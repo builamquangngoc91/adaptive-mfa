@@ -21,6 +21,7 @@ import (
 	"adaptive-mfa/pkg/ptr"
 	"adaptive-mfa/pkg/sms"
 	"adaptive-mfa/repository"
+	"adaptive-mfa/usecase"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
@@ -44,6 +45,7 @@ type LoginController struct {
 	userRepository         repository.IUserRepository
 	userMFARepository      repository.IUserMFARepository
 	userLoginLogRepository repository.IUserLoginLogRepository
+	riskAssessmentUsecase  usecase.IRiskAssessmentUsecase
 	emailService           email.IEmail
 	smsService             sms.ISMS
 }
@@ -54,6 +56,7 @@ func NewLoginController(
 	userRepository repository.IUserRepository,
 	userMFARepository repository.IUserMFARepository,
 	userLoginLogRepository repository.IUserLoginLogRepository,
+	riskAssessmentUsecase usecase.IRiskAssessmentUsecase,
 	emailService email.IEmail,
 	smsService sms.ISMS,
 ) ILoginController {
@@ -63,6 +66,7 @@ func NewLoginController(
 		userRepository:         userRepository,
 		userMFARepository:      userMFARepository,
 		userLoginLogRepository: userLoginLogRepository,
+		riskAssessmentUsecase:  riskAssessmentUsecase,
 		emailService:           emailService,
 		smsService:             smsService,
 	}
@@ -523,39 +527,13 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 }
 
 func (h *LoginController) isRequiredMFA(ctx context.Context, userID string, ipAddress string) (bool, error) {
-	userMFAs, err := h.userMFARepository.ListByUserID(ctx, nil, userID)
+	riskAssessmentLevel, err := h.riskAssessmentUsecase.CalculateScore(ctx, usecase.CalculateScoreArg{
+		UserID:    userID,
+		IPAddress: ipAddress,
+	})
 	if err != nil {
-		return false, appError.WithAppError(err, appError.CodeInternalServerError)
+		return false, err
 	}
 
-	if len(userMFAs) == 0 {
-		return false, nil
-	}
-
-	analysis, err := h.userLoginLogRepository.GetAnalysis(ctx, nil, userID, ipAddress)
-	if err != nil {
-		return false, appError.WithAppError(err, appError.CodeInternalServerError)
-	}
-
-	if !analysis.CountDisavowedFromIP.Valid || analysis.CountDisavowedFromIP.Int64 > 0 {
-		return true, nil
-	}
-
-	if !analysis.LatestSuccess.Valid {
-		return false, nil
-	}
-
-	if analysis.CountAttemptsFromIP.Int64 >= 5 {
-		return true, nil
-	}
-
-	if analysis.CountAttempts.Int64 >= 10 {
-		return true, nil
-	}
-
-	if !analysis.LatestSuccessFromIP.Valid || analysis.LatestSuccessFromIP.Time.After(time.Now().Add(time.Hour*24)) {
-		return true, nil
-	}
-
-	return false, nil
+	return riskAssessmentLevel == usecase.RiskAssessmentLevelHigh, nil
 }

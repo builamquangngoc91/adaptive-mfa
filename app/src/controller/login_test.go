@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
@@ -12,10 +11,11 @@ import (
 	"adaptive-mfa/pkg/cache"
 	cacheMock "adaptive-mfa/pkg/cache/mock"
 	"adaptive-mfa/pkg/common"
-	"adaptive-mfa/pkg/database"
 	emailMock "adaptive-mfa/pkg/email/mock"
 	smsMock "adaptive-mfa/pkg/sms/mock"
 	repositoryMock "adaptive-mfa/repository/mock"
+	"adaptive-mfa/usecase"
+	usecaseMock "adaptive-mfa/usecase/mock"
 
 	"github.com/go-playground/assert/v2"
 	"github.com/google/uuid"
@@ -62,6 +62,7 @@ func TestLoginController_Login(t *testing.T) {
 			userRepository := repositoryMock.NewMockIUserRepository(ctrl)
 			userMFARepository := repositoryMock.NewMockIUserMFARepository(ctrl)
 			userLoginLogRepository := repositoryMock.NewMockIUserLoginLogRepository(ctrl)
+			riskAssessmentUsecase := usecaseMock.NewMockIRiskAssessmentUsecase(ctrl)
 			emailService := emailMock.NewMockIEmail(ctrl)
 			smsService := smsMock.NewMockISMS(ctrl)
 
@@ -85,25 +86,10 @@ func TestLoginController_Login(t *testing.T) {
 				Del(gomock.Any(), gomock.Any()).
 				Return(nil)
 
-			userMFARepository.
+			riskAssessmentUsecase.
 				EXPECT().
-				ListByUserID(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return([]*model.UserMFA{
-					{
-						UserID:  uuid.New().String(),
-						MFAType: model.UserMFATypeEmail,
-					},
-				}, nil)
-
-			userLoginLogRepository.
-				EXPECT().
-				GetAnalysis(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(&model.UserLoginLogAnalysis{
-					CountDisavowedFromIP: database.NewNullInt64(0),
-					LatestSuccess:        sql.NullTime{},
-					CountAttempts:        database.NewNullInt64(0),
-					CountAttemptsFromIP:  database.NewNullInt64(0),
-				}, nil)
+				CalculateScore(gomock.Any(), gomock.Any()).
+				Return(usecase.RiskAssessmentLevelLow, nil)
 
 			_cacheMock.
 				EXPECT().
@@ -115,7 +101,7 @@ func TestLoginController_Login(t *testing.T) {
 				Create(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil)
 
-			return NewLoginController(cfg, _cacheMock, userRepository, userMFARepository, userLoginLogRepository, emailService, smsService)
+			return NewLoginController(cfg, _cacheMock, userRepository, userMFARepository, userLoginLogRepository, riskAssessmentUsecase, emailService, smsService)
 		}(),
 	})
 }
