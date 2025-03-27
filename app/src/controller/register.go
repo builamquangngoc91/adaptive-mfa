@@ -34,14 +34,8 @@ func NewRegisterController(cache cache.ICache, userRepository repository.IUserRe
 }
 
 func (h *RegisterController) Register(ctx context.Context, req *domain.RegisterRequest) (*domain.RegisterResponse, error) {
-	if req.Username == "" {
-		return nil, appError.WithAppError(errors.New("username is required"), appError.CodeBadRequest)
-	}
-	if req.Password == "" {
-		return nil, appError.WithAppError(errors.New("password is required"), appError.CodeBadRequest)
-	}
-	if req.Fullname == "" {
-		return nil, appError.WithAppError(errors.New("fullname is required"), appError.CodeBadRequest)
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
 	}
 
 	user, err := h.userRepository.GetByUsername(ctx, nil, req.Username)

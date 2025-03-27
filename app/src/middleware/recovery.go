@@ -7,6 +7,7 @@ import (
 	"adaptive-mfa/server"
 	"encoding/json"
 	"net/http"
+	"runtime/debug"
 )
 
 func RecoveryMiddleware(next server.Handler) server.Handler {
@@ -16,6 +17,7 @@ func RecoveryMiddleware(next server.Handler) server.Handler {
 				logger.NewLogger().
 					WithContext(r.Context()).
 					With("error", err).
+					With("stack", string(debug.Stack())).
 					Error("RecoveryMiddleware")
 
 				jsonBody, _ := json.Marshal(&domain.Error{

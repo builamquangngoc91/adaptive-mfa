@@ -20,6 +20,7 @@ type Config struct {
 	Port       int
 	Env        string
 	TOTP       *TOTPConfig
+	RateLimit  *RateLimitConfig
 }
 
 func LoadConfig() (*Config, error) {
@@ -40,6 +41,7 @@ func LoadConfig() (*Config, error) {
 		Port:       port,
 		Env:        os.Getenv("AMFA_ENV"),
 		TOTP:       LoadTOTPConfig(),
+		RateLimit:  LoadRateLimitConfig(),
 	}, nil
 }
 
@@ -96,5 +98,37 @@ func LoadTOTPConfig() *TOTPConfig {
 	return &TOTPConfig{
 		Issuer:     os.Getenv("AMFA_TOTP_ISSUER"),
 		SecretSize: uint(secretSize),
+	}
+}
+
+type RateLimitConfig struct {
+	LoginVerificationAttemptsThreshold    int64
+	LoginVerificationAttemptsLockDuration time.Duration
+	LoginAttemptsThreshold                int64
+	LoginAttemptsLockDuration             time.Duration
+}
+
+func LoadRateLimitConfig() *RateLimitConfig {
+	loginVerificationAttemptsThreshold, err := strconv.ParseInt(os.Getenv("AMFA_LOGIN_VERIFICATION_ATTEMPTS_THRESHOLD"), 10, 64)
+	if err != nil {
+		loginVerificationAttemptsThreshold = 20
+	}
+	loginVerificationAttemptsLockDuration, err := strconv.ParseInt(os.Getenv("AMFA_LOGIN_VERIFICATION_ATTEMPTS_LOCK_DURATION"), 10, 64)
+	if err != nil {
+		loginVerificationAttemptsLockDuration = 86400
+	}
+	loginAttemptsThreshold, err := strconv.ParseInt(os.Getenv("AMFA_LOGIN_ATTEMPTS_THRESHOLD"), 10, 64)
+	if err != nil {
+		loginAttemptsThreshold = 5
+	}
+	loginAttemptsLockDuration, err := strconv.ParseInt(os.Getenv("AMFA_LOGIN_ATTEMPTS_LOCK_DURATION"), 10, 64)
+	if err != nil {
+		loginAttemptsLockDuration = 86400
+	}
+	return &RateLimitConfig{
+		LoginVerificationAttemptsThreshold:    loginVerificationAttemptsThreshold,
+		LoginVerificationAttemptsLockDuration: time.Duration(loginVerificationAttemptsLockDuration) * time.Second,
+		LoginAttemptsThreshold:                loginAttemptsThreshold,
+		LoginAttemptsLockDuration:             time.Duration(loginAttemptsLockDuration) * time.Second,
 	}
 }

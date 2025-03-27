@@ -109,23 +109,39 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		}
 	}()
 
-	fmt.Println("login")
-
-	// TODO: rate limit
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
 
 	requestID := common.GetRequestID(ctx)
 	user, err = h.userRepository.GetByUsername(ctx, nil, req.Username)
-	if err != nil && err != sql.ErrNoRows {
+	switch err {
+	case nil:
+		// no-op
+	case sql.ErrNoRows:
+		return nil, appError.ErrorUsernameOrPasswordInvalid
+	default:
 		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
-	if user == nil {
-		return nil, appError.ErrorUsernameOrPasswordInvalid
-	}
-
 	err = bcrypt.CompareHashAndPassword([]byte(user.HashPassword), []byte(req.Password))
-	if err != nil {
+	switch err {
+	case nil:
+		loginAttemptsKey := cache.GetLoginAttemptsKey(user.ID, common.GetIPAddress(ctx))
+		if err := RateLimit(ctx, h.cache, loginAttemptsKey, h.cfg.RateLimit.LoginAttemptsThreshold, h.cfg.RateLimit.LoginAttemptsLockDuration, true); err != nil {
+			if errors.Is(err, appError.ErrorExceededThresholdRateLimit) {
+				return nil, appError.ErrorExceededLoginAttempts
+			}
+			return nil, err
+		}
+	case bcrypt.ErrMismatchedHashAndPassword:
+		loginAttemptsKey := cache.GetLoginAttemptsKey(user.ID, common.GetIPAddress(ctx))
+		if err := RateLimit(ctx, h.cache, loginAttemptsKey, 5, time.Hour*24, false); err != nil {
+			return nil, err
+		}
 		return nil, appError.ErrorUsernameOrPasswordInvalid
+	default:
+		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
 	mfaMetadata := domain.MFAMetadata{
@@ -203,6 +219,10 @@ func (h *LoginController) LoginWithMFA(ctx context.Context, req *domain.LoginWit
 		}
 	}()
 
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
+
 	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &metadata)
 	if err != nil {
 		if errors.Is(err, cache.Nil) {
@@ -258,6 +278,10 @@ func (h *LoginController) generateToken(ctx context.Context, user *model.User) (
 }
 
 func (h *LoginController) SendLoginEmailCode(ctx context.Context, req *domain.SendLoginEmailCodeRequest) (*domain.SendLoginEmailCodeResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
+
 	var mfaMetadata domain.MFAMetadata
 	if err := h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
 		if errors.Is(err, cache.Nil) {
@@ -298,7 +322,6 @@ func (h *LoginController) SendLoginEmailCode(ctx context.Context, req *domain.Se
 
 func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.VerifyLoginEmailCodeRequest) (_ *domain.VerifyLoginEmailCodeResponse, err error) {
 	var mfaMetadata domain.MFAMetadata
-
 	defer func() {
 		userLoginLog := &model.UserLoginLog{
 			ID:          uuid.New().String(),
@@ -330,6 +353,10 @@ func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.
 		}
 	}()
 
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
+
 	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata)
 	if err != nil {
 		if errors.Is(err, cache.Nil) {
@@ -338,18 +365,18 @@ func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	if mfaMetadata.Code != req.Code {
-		mfaMetadata.Attempts++
-		if mfaMetadata.Attempts >= 5 {
-			return nil, appError.ErrorExceededMFACodeAttempts
+	match := mfaMetadata.Code == req.Code
+	key := cache.GetLoginVerificationAttemptsKey(mfaMetadata.UserID, common.GetIPAddress(ctx))
+	err = RateLimit(ctx, h.cache, key, h.cfg.RateLimit.LoginVerificationAttemptsThreshold, h.cfg.RateLimit.LoginVerificationAttemptsLockDuration, match)
+	switch err {
+	case nil:
+		if !match {
+			return nil, appError.ErrorInvalidMFACode
 		}
-
-		err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true)
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, appError.ErrorInvalidMFACode
+	case appError.ErrorExceededThresholdRateLimit:
+		return nil, appError.ErrorExceededLoginVerificationAttempts
+	default:
+		return nil, err
 	}
 
 	mfaMetadata.Type = domain.UserLoginTypeMFAMail
@@ -366,6 +393,10 @@ func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.
 }
 
 func (h *LoginController) SendLoginPhoneCode(ctx context.Context, req *domain.SendLoginPhoneCodeRequest) (_ *domain.SendLoginPhoneCodeResponse, err error) {
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
+
 	var mfaMetadata domain.MFAMetadata
 	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata)
 	if err != nil {
@@ -441,6 +472,10 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 		}
 	}()
 
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
+
 	err = h.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata)
 	if err != nil {
 		if errors.Is(err, cache.Nil) {
@@ -449,21 +484,21 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
 	}
 
-	mfaMetadata.Type = domain.UserLoginTypeMFASMS
-	if mfaMetadata.Code != req.Code {
-		mfaMetadata.Attempts++
-		if mfaMetadata.Attempts >= 5 {
-			return nil, appError.ErrorExceededMFACodeAttempts
+	match := mfaMetadata.Code == req.Code
+	key := cache.GetLoginVerificationAttemptsKey(mfaMetadata.UserID, common.GetIPAddress(ctx))
+	err = RateLimit(ctx, h.cache, key, h.cfg.RateLimit.LoginVerificationAttemptsThreshold, h.cfg.RateLimit.LoginVerificationAttemptsLockDuration, match)
+	switch err {
+	case nil:
+		if !match {
+			return nil, appError.ErrorInvalidMFACode
 		}
-
-		err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true)
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, appError.ErrorInvalidMFACode
+	case appError.ErrorExceededThresholdRateLimit:
+		return nil, appError.ErrorExceededLoginVerificationAttempts
+	default:
+		return nil, err
 	}
 
+	mfaMetadata.Type = domain.UserLoginTypeMFASMS
 	mfaMetadata.PrivateKey = randstr.Hex(16)
 	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), mfaMetadata, nil, true)
 	if err != nil {

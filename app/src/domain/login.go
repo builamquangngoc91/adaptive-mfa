@@ -1,8 +1,22 @@
 package domain
 
+import "errors"
+
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+func (r LoginRequest) Validate() error {
+	if r.Username == "" {
+		return errors.New("username is required")
+	}
+
+	if r.Password == "" {
+		return errors.New("password is required")
+	}
+
+	return nil
 }
 
 type LoginResponse struct {
@@ -14,6 +28,18 @@ type LoginResponse struct {
 type LoginWithMFARequest struct {
 	ReferenceID string `json:"reference_id"`
 	PrivateKey  string `json:"private_key"`
+}
+
+func (r LoginWithMFARequest) Validate() error {
+	if r.ReferenceID == "" {
+		return errors.New("reference ID is required")
+	}
+
+	if r.PrivateKey == "" {
+		return errors.New("private key is required")
+	}
+
+	return nil
 }
 
 type LoginWithMFAResponse struct {
@@ -31,6 +57,14 @@ type SendLoginEmailCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 }
 
+func (r SendLoginEmailCodeRequest) Validate() error {
+	if r.ReferenceID == "" {
+		return errors.New("reference ID is required")
+	}
+
+	return nil
+}
+
 type SendLoginEmailCodeResponse struct {
 	Code       string `json:"code,omitempty"`
 	DisavowURL string `json:"disavow_url,omitempty"`
@@ -39,6 +73,18 @@ type SendLoginEmailCodeResponse struct {
 type VerifyLoginEmailCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 	Code        string `json:"code"`
+}
+
+func (r VerifyLoginEmailCodeRequest) Validate() error {
+	if r.ReferenceID == "" {
+		return errors.New("reference ID is required")
+	}
+
+	if r.Code == "" {
+		return errors.New("code is required")
+	}
+
+	return nil
 }
 
 type VerifyLoginEmailCodeResponse struct {
@@ -50,6 +96,14 @@ type SendLoginPhoneCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 }
 
+func (r SendLoginPhoneCodeRequest) Validate() error {
+	if r.ReferenceID == "" {
+		return errors.New("reference ID is required")
+	}
+
+	return nil
+}
+
 type SendLoginPhoneCodeResponse struct {
 	Code       string `json:"code,omitempty"`
 	DisavowURL string `json:"disavow_url,omitempty"`
@@ -58,6 +112,18 @@ type SendLoginPhoneCodeResponse struct {
 type VerifyLoginPhoneCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 	Code        string `json:"code"`
+}
+
+func (r VerifyLoginPhoneCodeRequest) Validate() error {
+	if r.ReferenceID == "" {
+		return errors.New("reference ID is required")
+	}
+
+	if r.Code == "" {
+		return errors.New("code is required")
+	}
+
+	return nil
 }
 
 type VerifyLoginPhoneCodeResponse struct {

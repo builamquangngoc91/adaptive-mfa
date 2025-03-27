@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 	"strings"
 
 	"adaptive-mfa/domain"
@@ -154,6 +155,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 						With("method", req.Method).
 						With("path", req.URL.Path).
 						With("error", _err.Error()).
+						With("stack", string(debug.Stack())).
 						Error("Handler error")
 					w.WriteHeader(_err.StatusCode())
 					json.NewEncoder(w).Encode(&domain.Error{
@@ -170,6 +172,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 						With("method", req.Method).
 						With("path", req.URL.Path).
 						With("error", err.Error()).
+						With("stack", string(debug.Stack())).
 						Error("Handler error")
 					w.WriteHeader(http.StatusInternalServerError)
 					json.NewEncoder(w).Encode(&domain.Error{

@@ -8,20 +8,25 @@ import (
 type Code int
 
 const (
-	CodeUsernameOrPasswordInvalid Code = 104000001
-	CodeInvalidMFAReferenceID     Code = 104000002
-	CodeInvalidMFAPrivateKey      Code = 104000003
-	CodeInvalidMFACode            Code = 104000004
-	CodeBadRequest                Code = 104000005
-	CodeExceededMFACodeAttempts   Code = 104000006
-	CodeMFAForPhoneNotFound       Code = 104000007
-	CodeMFAForEmailNotFound       Code = 104000008
-	CodeUnauthorized              Code = 104010000
-	CodeInternalServerError       Code = 105000001
-	CodeCacheError                Code = 105000002
-	CodeSendSMSFailed             Code = 105000003
-	CodeSendEmailFailed           Code = 105000004
-	CodeTOTPMethodAlreadyExists   Code = 104000009
+	CodeUsernameOrPasswordInvalid         Code = 104000001
+	CodeInvalidMFAReferenceID             Code = 104000002
+	CodeInvalidMFAPrivateKey              Code = 104000003
+	CodeInvalidMFACode                    Code = 104000004
+	CodeBadRequest                        Code = 104000005
+	CodeExceededMFACodeAttempts           Code = 104000006
+	CodeExceededLoginAttempts             Code = 104000007
+	CodeMFAForPhoneNotFound               Code = 104000008
+	CodeMFAForEmailNotFound               Code = 104000009
+	CodeTOTPMethodAlreadyExists           Code = 104000010
+	CodeExceededThresholdRateLimit        Code = 104000011
+	CodeExceededLoginVerificationAttempts Code = 104000012
+
+	CodeUnauthorized Code = 104010000
+
+	CodeInternalServerError Code = 105000001
+	CodeCacheError          Code = 105000002
+	CodeSendSMSFailed       Code = 105000003
+	CodeSendEmailFailed     Code = 105000004
 )
 
 type responseInfo struct {
@@ -54,6 +59,14 @@ var mapCodeToMessage = map[Code]responseInfo{
 		Message:    "exceeded mfa code attempts",
 		StatusCode: http.StatusTooManyRequests,
 	},
+	CodeExceededThresholdRateLimit: {
+		Message:    "exceeded threshold rate limit",
+		StatusCode: http.StatusTooManyRequests,
+	},
+	CodeExceededLoginVerificationAttempts: {
+		Message:    "exceeded login verification attempts",
+		StatusCode: http.StatusTooManyRequests,
+	},
 	CodeMFAForPhoneNotFound: {
 		Message:    "mfa for phone not found",
 		StatusCode: http.StatusBadRequest,
@@ -65,6 +78,10 @@ var mapCodeToMessage = map[Code]responseInfo{
 	CodeSendEmailFailed: {
 		Message:    "send email failed",
 		StatusCode: http.StatusInternalServerError,
+	},
+	CodeExceededLoginAttempts: {
+		Message:    "exceeded login attempts",
+		StatusCode: http.StatusTooManyRequests,
 	},
 	CodeTOTPMethodAlreadyExists: {
 		Message:    "totp method already exists",
@@ -115,18 +132,21 @@ func AppErrorFromCode(code Code) AppError {
 }
 
 var (
-	ErrorUsernameOrPasswordInvalid AppError = AppErrorFromCode(CodeUsernameOrPasswordInvalid)
-	ErrorInvalidMFAReferenceID     AppError = AppErrorFromCode(CodeInvalidMFAReferenceID)
-	ErrorInvalidMFAPrivateKey      AppError = AppErrorFromCode(CodeInvalidMFAPrivateKey)
-	ErrorInvalidMFACode            AppError = AppErrorFromCode(CodeInvalidMFACode)
-	ErrorBadRequest                AppError = AppErrorFromCode(CodeBadRequest)
-	ErrorExceededMFACodeAttempts   AppError = AppErrorFromCode(CodeExceededMFACodeAttempts)
-	ErrorMFAForPhoneNotFound       AppError = AppErrorFromCode(CodeMFAForPhoneNotFound)
-	ErrorMFAForEmailNotFound       AppError = AppErrorFromCode(CodeMFAForEmailNotFound)
-	ErrorUnauthorized              AppError = AppErrorFromCode(CodeUnauthorized)
-	ErrorInternalServerError       AppError = AppErrorFromCode(CodeInternalServerError)
-	ErrorCacheError                AppError = AppErrorFromCode(CodeCacheError)
-	ErrorSendSMSFailed             AppError = AppErrorFromCode(CodeSendSMSFailed)
-	ErrorSendEmailFailed           AppError = AppErrorFromCode(CodeSendEmailFailed)
-	ErrorTOTPMethodAlreadyExists   AppError = AppErrorFromCode(CodeTOTPMethodAlreadyExists)
+	ErrorUsernameOrPasswordInvalid         AppError = AppErrorFromCode(CodeUsernameOrPasswordInvalid)
+	ErrorInvalidMFAReferenceID             AppError = AppErrorFromCode(CodeInvalidMFAReferenceID)
+	ErrorInvalidMFAPrivateKey              AppError = AppErrorFromCode(CodeInvalidMFAPrivateKey)
+	ErrorInvalidMFACode                    AppError = AppErrorFromCode(CodeInvalidMFACode)
+	ErrorBadRequest                        AppError = AppErrorFromCode(CodeBadRequest)
+	ErrorExceededMFACodeAttempts           AppError = AppErrorFromCode(CodeExceededMFACodeAttempts)
+	ErrorExceededLoginAttempts             AppError = AppErrorFromCode(CodeExceededLoginAttempts)
+	ErrorExceededLoginVerificationAttempts AppError = AppErrorFromCode(CodeExceededLoginVerificationAttempts)
+	ErrorExceededThresholdRateLimit        AppError = AppErrorFromCode(CodeExceededThresholdRateLimit)
+	ErrorMFAForPhoneNotFound               AppError = AppErrorFromCode(CodeMFAForPhoneNotFound)
+	ErrorMFAForEmailNotFound               AppError = AppErrorFromCode(CodeMFAForEmailNotFound)
+	ErrorUnauthorized                      AppError = AppErrorFromCode(CodeUnauthorized)
+	ErrorInternalServerError               AppError = AppErrorFromCode(CodeInternalServerError)
+	ErrorCacheError                        AppError = AppErrorFromCode(CodeCacheError)
+	ErrorSendSMSFailed                     AppError = AppErrorFromCode(CodeSendSMSFailed)
+	ErrorSendEmailFailed                   AppError = AppErrorFromCode(CodeSendEmailFailed)
+	ErrorTOTPMethodAlreadyExists           AppError = AppErrorFromCode(CodeTOTPMethodAlreadyExists)
 )

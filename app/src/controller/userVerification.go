@@ -8,6 +8,7 @@ import (
 	"adaptive-mfa/pkg/common"
 	"adaptive-mfa/pkg/database"
 	"adaptive-mfa/pkg/email"
+	appError "adaptive-mfa/pkg/error"
 	"adaptive-mfa/pkg/ptr"
 	"adaptive-mfa/pkg/sms"
 	"adaptive-mfa/repository"
@@ -61,7 +62,6 @@ func NewUserVerificationController(
 
 func (h *UserVerificationController) SendEmailVerification(ctx context.Context, req *domain.SendEmailVerificationRequest) (*domain.SendEmailVerificationResponse, error) {
 	userID := common.GetUserID(ctx)
-
 	user, err := h.userRepository.GetByID(ctx, nil, userID)
 	if err != nil {
 		return nil, err
@@ -82,6 +82,10 @@ func (h *UserVerificationController) SendEmailVerification(ctx context.Context, 
 }
 
 func (h *UserVerificationController) VerifyEmailVerification(ctx context.Context, req *domain.VerifyEmailVerificationRequest) (*domain.VerifyEmailVerificationResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
+
 	userID := common.GetUserID(ctx)
 	code, err := h.cache.GetAndDel(ctx, cache.GetEmailVerificationCodeKey(userID))
 	if err != nil && err != cache.Nil {
@@ -124,7 +128,6 @@ func (h *UserVerificationController) VerifyEmailVerification(ctx context.Context
 
 func (h *UserVerificationController) SendPhoneVerification(ctx context.Context, req *domain.SendPhoneVerificationRequest) (*domain.SendPhoneVerificationResponse, error) {
 	userID := common.GetUserID(ctx)
-
 	user, err := h.userRepository.GetByID(ctx, nil, userID)
 	if err != nil {
 		return nil, err
@@ -145,8 +148,11 @@ func (h *UserVerificationController) SendPhoneVerification(ctx context.Context, 
 }
 
 func (h *UserVerificationController) VerifyPhoneVerification(ctx context.Context, req *domain.VerifyPhoneVerificationRequest) (*domain.VerifyPhoneVerificationResponse, error) {
-	userID := common.GetUserID(ctx)
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
 
+	userID := common.GetUserID(ctx)
 	code, err := h.cache.GetAndDel(ctx, cache.GetPhoneVerificationCodeKey(userID))
 	if err != nil && err != cache.Nil {
 		return nil, err

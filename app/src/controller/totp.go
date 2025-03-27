@@ -102,6 +102,10 @@ func (c *TOTPController) DeleteTOTPMethod(ctx context.Context) (*domain.DeleteTO
 }
 
 func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyTOTPCodeRequest) (*domain.VerifyTOTPCodeResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, appError.WithAppError(err, appError.CodeBadRequest)
+	}
+
 	var mfaMetadata domain.MFAMetadata
 	if err := c.cache.GetJSON(ctx, cache.GetMFAReferenceIDKey(req.ReferenceID), &mfaMetadata); err != nil {
 		return nil, appError.WithAppError(err, appError.CodeCacheError)
@@ -111,14 +115,22 @@ func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyT
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
-
 	if userMFA == nil {
 		return nil, appError.ErrorMFAForEmailNotFound
 	}
 
 	valid := totp.Validate(req.Code, userMFA.Metadata.Secret)
-	if !valid {
-		return nil, appError.ErrorInvalidMFACode
+	key := cache.GetLoginVerificationAttemptsKey(mfaMetadata.UserID, common.GetIPAddress(ctx))
+	err = RateLimit(ctx, c.cache, key, c.cfg.RateLimit.LoginVerificationAttemptsThreshold, c.cfg.RateLimit.LoginVerificationAttemptsLockDuration, valid)
+	switch err {
+	case nil:
+		if !valid {
+			return nil, appError.ErrorInvalidMFACode
+		}
+	case appError.ErrorExceededThresholdRateLimit:
+		return nil, appError.ErrorExceededLoginVerificationAttempts
+	default:
+		return nil, err
 	}
 
 	mfaMetadata.Type = domain.UserLoginTypeMFATOTP

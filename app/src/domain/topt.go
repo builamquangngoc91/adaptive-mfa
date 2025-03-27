@@ -1,5 +1,7 @@
 package domain
 
+import "errors"
+
 type AddTOTPMethodRequest struct{}
 
 type AddTOTPMethodResponse struct {
@@ -10,6 +12,18 @@ type AddTOTPMethodResponse struct {
 type VerifyTOTPCodeRequest struct {
 	ReferenceID string `json:"reference_id"`
 	Code        string `json:"code"`
+}
+
+func (r VerifyTOTPCodeRequest) Validate() error {
+	if r.ReferenceID == "" {
+		return errors.New("reference ID is required")
+	}
+
+	if r.Code == "" {
+		return errors.New("code is required")
+	}
+
+	return nil
 }
 
 type VerifyTOTPCodeResponse struct {
