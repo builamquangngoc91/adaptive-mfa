@@ -1,0 +1,578 @@
+{
+	"info": {
+		"_postman_id": "446374e9-2f4a-4d03-9588-c0c85a4edb8a",
+		"name": "amfa",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "7420089"
+	},
+	"item": [
+		{
+			"name": "Register",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"fullname\": \"Bui Lam Quang ngoc\",\n    \"username\": \"ngoc\",\n    \"password\": \"password\",\n    \"email\": \"ngoc@gmail.com\",\n    \"phone\": \"+84905098678\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/auth/register",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"auth",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Real-IP",
+						"value": "192.167.0.1:1001",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"ngoc\",\n    \"password\": \"password\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/auth/login",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login With MFA",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Real-IP",
+						"value": "192.167.0.1:1001",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"reference_id\":\"d841f47b-1248-4070-9fba-a07cad0d7471\",\"private_key\":\"9f692a1747263be5\"}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/auth/login-with-mfa",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"auth",
+						"login-with-mfa"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Logout",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDI4MzQwMzMsInN1YiI6ImEyN2NiNmE4LTJiY2EtNDAzZi1iOTIzLTQ4MWUwNjI0Yjk2MSJ9.hdFhvmd7k3IqxDZnUthSYsFCxLVdTPmvGHriYEdn21w",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/logout",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"logout"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "send email verification",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMxNzAxOTMsInN1YiI6ImE1ZGMzMWUxLWNkN2YtNGI4NC1hZTA0LTE3ZjczZWRjM2Y3OCJ9.a6vnnaipw3T2JQOlqTO4REKmTU_RbpXfVBfZvi6G9g0",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/send-email-verification",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"send-email-verification"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "send phone verification",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMxNzU2MTMsInN1YiI6ImE1ZGMzMWUxLWNkN2YtNGI4NC1hZTA0LTE3ZjczZWRjM2Y3OCJ9.ECvCqsTcUq61R_AQAsazAPAEJ1G0u4NQK7vCjfGGlpQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/send-phone-verification",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"send-phone-verification"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "verify email verification",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMxNzAxOTMsInN1YiI6ImE1ZGMzMWUxLWNkN2YtNGI4NC1hZTA0LTE3ZjczZWRjM2Y3OCJ9.a6vnnaipw3T2JQOlqTO4REKmTU_RbpXfVBfZvi6G9g0",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"code\": \"225781\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/verify-email-verification",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"verify-email-verification"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "verify phone verification",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMxNzU2MTMsInN1YiI6ImE1ZGMzMWUxLWNkN2YtNGI4NC1hZTA0LTE3ZjczZWRjM2Y3OCJ9.ECvCqsTcUq61R_AQAsazAPAEJ1G0u4NQK7vCjfGGlpQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"code\": \"418633\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/verify-phone-verification",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"verify-phone-verification"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "add topt method",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMxNzU2MTMsInN1YiI6ImE1ZGMzMWUxLWNkN2YtNGI4NC1hZTA0LTE3ZjczZWRjM2Y3OCJ9.ECvCqsTcUq61R_AQAsazAPAEJ1G0u4NQK7vCjfGGlpQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/add-totp-method",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"add-totp-method"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "list mfa methods",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDMxNzU2MTMsInN1YiI6ImE1ZGMzMWUxLWNkN2YtNGI4NC1hZTA0LTE3ZjczZWRjM2Y3OCJ9.ECvCqsTcUq61R_AQAsazAPAEJ1G0u4NQK7vCjfGGlpQ",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "localhost:8082/v1/list-mfa-methods",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"list-mfa-methods"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "verify topt code",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDI4NDA2NDEsInN1YiI6ImEyN2NiNmE4LTJiY2EtNDAzZi1iOTIzLTQ4MWUwNjI0Yjk2MSJ9.7ZDuk1Id2vRi6ruVbx6DyypILN9KTEBR1Bp3xQoHS64",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"reference_id\": \"d841f47b-1248-4070-9fba-a07cad0d7471\",\n    \"code\": \"005267\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/auth/verify-totp-code",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"auth",
+						"verify-totp-code"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "verify login email code",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDI4NDA2NDEsInN1YiI6ImEyN2NiNmE4LTJiY2EtNDAzZi1iOTIzLTQ4MWUwNjI0Yjk2MSJ9.7ZDuk1Id2vRi6ruVbx6DyypILN9KTEBR1Bp3xQoHS64",
+						"type": "text"
+					},
+					{
+						"key": "X-Real-IP",
+						"value": "192.167.0.1:1001",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"reference_id\": \"ba0a8231-bae4-418d-a681-6f2be3322dcd\",\n    \"code\": \"041621\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/auth/verify-login-email-code",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"auth",
+						"verify-login-email-code"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "verify login phone code",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDI4NDA2NDEsInN1YiI6ImEyN2NiNmE4LTJiY2EtNDAzZi1iOTIzLTQ4MWUwNjI0Yjk2MSJ9.7ZDuk1Id2vRi6ruVbx6DyypILN9KTEBR1Bp3xQoHS64",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"reference_id\": \"0bdc8c91-4b4b-412b-ab9d-f74c2da85a9a\",\n    \"code\": \"294729\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/verify-login-phone-code",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"verify-login-phone-code"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "send login email code",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDI4NDA2NDEsInN1YiI6ImEyN2NiNmE4LTJiY2EtNDAzZi1iOTIzLTQ4MWUwNjI0Yjk2MSJ9.7ZDuk1Id2vRi6ruVbx6DyypILN9KTEBR1Bp3xQoHS64",
+						"type": "text"
+					},
+					{
+						"key": "X-Real-IP",
+						"value": "192.167.0.1:1001",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"reference_id\": \"ba0a8231-bae4-418d-a681-6f2be3322dcd\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/auth/send-login-email-code",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"auth",
+						"send-login-email-code"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "send login phone code",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDI4NDA2NDEsInN1YiI6ImEyN2NiNmE4LTJiY2EtNDAzZi1iOTIzLTQ4MWUwNjI0Yjk2MSJ9.7ZDuk1Id2vRi6ruVbx6DyypILN9KTEBR1Bp3xQoHS64",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"reference_id\": \"bca8628b-53fb-472b-ae30-b3f8b89085a5\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/auth/send-login-phone-code",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"auth",
+						"send-login-phone-code"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Metrics",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8082/metrics",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"metrics"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "disavow",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:8082/v1/hacked/disavow?ref=8cce184f-ef72-40dc-81ed-b3d903d66ba0",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"v1",
+						"hacked",
+						"disavow"
+					],
+					"query": [
+						{
+							"key": "ref",
+							"value": "8cce184f-ef72-40dc-81ed-b3d903d66ba0"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
