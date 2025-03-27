@@ -35,10 +35,8 @@ func RateLimit(ctx context.Context, _cache cache.ICache, key string, threshold i
 	if err != nil {
 		return err
 	}
-	fmt.Println("success", success)
 
 	if success {
-		fmt.Println("success1", success)
 		if err := _cache.Del(ctx, key); err != nil {
 			fmt.Println("err", err)
 			return appError.WithAppError(err, appError.CodeCacheError)
