@@ -55,7 +55,19 @@ The goal is to maintain a strong security posture while minimizing disruption to
 ## Database schema
 ![image](https://github.com/user-attachments/assets/edeae327-0a77-4fde-bc66-8de480d06b8a)
 
-## Technology:
+## Solutions:
+- **API Service**:
+  - We have 5 main groups API:
+    - Login (1): **/auth/login**, we can login with basic auth (username/password). Or system will request you login with MFA, then system returns reference_id to help system identify you in the next requests.
+    - Send Verification Code (2): **/auth/send-login-email-code**, **/auth/send-login-phone-code**, If you are requested MFA Login, you must call these apis (with **reference_id**) to get **verification_code**
+    - Verify code (3): When you receive code from SMS/Email, you must call one of apis **/auth/verify-login-email-code**, **/auth/verify-login-email-code** (with **reference_id**) to verify code. After verify successfully, system returns a **private key**
+    - Login with MFA (4): When you receive **private_key**, you must call api **/auth/login-with-mfa** (with **reference_id** and **private_key**), system will verify and generate token.
+    - Diasow (5): When you receive message from **/hacked/disavow** from (2), you also receive a link to let you report to us if the login attempt was not initiated by yours. 
+- **Risk Assessment**
+  - System gets analysis from table user_login_logs to calculate risk score. 
+  - Improvement: Apply AI to caculate risk score.
+
+## Technologies:
 - **Golang**: Main programming language for this project
 - **Docker**: Build contianer of project
 - **Postgres**: Save/Get data
@@ -65,6 +77,7 @@ The goal is to maintain a strong security posture while minimizing disruption to
   - prometheus: send metrics
   - redis: interact with redis
   - database/sql: interact with database
+
 ## Contributions:
 - **MFA System**: A system to handle user login with MFA (rely on risk assesstment module)
 - **Custom HTTP Server**: Custom HTTP Server that reduce boilerplate code likes (covert request body to struct, handle response error, write response header, write response body). Now engineer only need declare request, response structs and focus handle business code.
