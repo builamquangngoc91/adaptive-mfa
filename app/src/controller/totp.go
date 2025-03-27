@@ -24,7 +24,7 @@ type ITOTPController interface {
 	AddTOTPMethod(ctx context.Context, req *domain.AddTOTPMethodRequest) (*domain.AddTOTPMethodResponse, error)
 	DeleteTOTPMethod(ctx context.Context) (*domain.DeleteTOTPMethodResponse, error)
 	VerifyTOTPCode(ctx context.Context, req *domain.VerifyTOTPCodeRequest) (*domain.VerifyTOTPCodeResponse, error)
-	ListTOTPMethods(ctx context.Context) (*domain.ListTOTPMethodsResponse, error)
+	ListMFAMethods(ctx context.Context) (*domain.ListMFAMethodsResponse, error)
 }
 
 type TOTPController struct {
@@ -155,7 +155,7 @@ func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyT
 	}, nil
 }
 
-func (c *TOTPController) ListTOTPMethods(ctx context.Context) (*domain.ListTOTPMethodsResponse, error) {
+func (c *TOTPController) ListMFAMethods(ctx context.Context) (*domain.ListMFAMethodsResponse, error) {
 	userID := common.GetUserID(ctx)
 	userMFAs, err := c.userMFARepository.ListByUserID(ctx, nil, userID)
 	if err != nil {
@@ -167,7 +167,7 @@ func (c *TOTPController) ListTOTPMethods(ctx context.Context) (*domain.ListTOTPM
 		methods[i] = string(userMFA.MFAType)
 	}
 
-	response := &domain.ListTOTPMethodsResponse{
+	response := &domain.ListMFAMethodsResponse{
 		Methods: methods,
 	}
 

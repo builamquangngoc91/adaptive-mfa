@@ -409,7 +409,7 @@ func TestTOTPController_VerifyTOTPCode(t *testing.T) {
 	})
 }
 
-func TestTOTPController_ListTOTPMethods(t *testing.T) {
+func TestTOTPController_ListMFAMethods(t *testing.T) {
 	type testcase struct {
 		name       string
 		ctx        context.Context
@@ -419,7 +419,7 @@ func TestTOTPController_ListTOTPMethods(t *testing.T) {
 
 	validate := func(t *testing.T, tc *testcase) {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := tc.controller.ListTOTPMethods(tc.ctx)
+			_, err := tc.controller.ListMFAMethods(tc.ctx)
 			assert.Equal(t, tc.err, err)
 		})
 	}

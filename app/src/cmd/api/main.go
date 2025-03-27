@@ -102,7 +102,7 @@ func main() {
 			requiredAuthGroup.Post("/verify-phone-verification", userVerificationController.VerifyPhoneVerification)
 			requiredAuthGroup.Post("/add-totp-method", totpController.AddTOTPMethod)
 			requiredAuthGroup.Delete("/delete-totp-method", totpController.DeleteTOTPMethod)
-			requiredAuthGroup.Get("/list-totp-methods", totpController.ListTOTPMethods)
+			requiredAuthGroup.Get("/list-mfa-methods", totpController.ListMFAMethods)
 		}
 	}
 

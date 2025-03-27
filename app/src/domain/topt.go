@@ -31,7 +31,7 @@ type VerifyTOTPCodeResponse struct {
 	PrivateKey  string `json:"private_key"`
 }
 
-type ListTOTPMethodsResponse struct {
+type ListMFAMethodsResponse struct {
 	Methods []string `json:"methods"`
 }
 

@@ -69,19 +69,19 @@ func (mr *MockITOTPControllerMockRecorder) DeleteTOTPMethod(ctx any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTOTPMethod", reflect.TypeOf((*MockITOTPController)(nil).DeleteTOTPMethod), ctx)
 }
 
-// ListTOTPMethods mocks base method.
-func (m *MockITOTPController) ListTOTPMethods(ctx context.Context) (*domain.ListTOTPMethodsResponse, error) {
+// ListMFAMethods mocks base method.
+func (m *MockITOTPController) ListMFAMethods(ctx context.Context) (*domain.ListMFAMethodsResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTOTPMethods", ctx)
-	ret0, _ := ret[0].(*domain.ListTOTPMethodsResponse)
+	ret := m.ctrl.Call(m, "ListMFAMethods", ctx)
+	ret0, _ := ret[0].(*domain.ListMFAMethodsResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListTOTPMethods indicates an expected call of ListTOTPMethods.
-func (mr *MockITOTPControllerMockRecorder) ListTOTPMethods(ctx any) *gomock.Call {
+// ListMFAMethods indicates an expected call of ListMFAMethods.
+func (mr *MockITOTPControllerMockRecorder) ListMFAMethods(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTOTPMethods", reflect.TypeOf((*MockITOTPController)(nil).ListTOTPMethods), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMFAMethods", reflect.TypeOf((*MockITOTPController)(nil).ListMFAMethods), ctx)
 }
 
 // VerifyTOTPCode mocks base method.
