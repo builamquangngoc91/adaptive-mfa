@@ -103,16 +103,11 @@ Access via browser:
 
 You can simulate traffic using tools like:
 
-hey
-
+**curl**
 ```
-hey -n 1000 -c 20 -m POST http://localhost:8081/auth/login
-```
-
-wrk
-
-```
-wrk -t4 -c100 -d30s http://localhost:8081/auth/login
+curl -X POST http://localhost:8081/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin@example.com", "password": "securepassword"}'
 ```
 ⸻
 
