@@ -135,14 +135,14 @@ The system exposes five main groups of APIs:
           "password": "<password>"
       }'
   ```
--- **Login with MFA**
+- **Login with MFA**
 ```
 curl --location 'localhost:8082/v1/auth/login-with-mfa' \
     --header 'Content-Type: application/json' \
     --data '{"reference_id":"<reference_id>","private_key":"<private_key>"}
     '
 ```
--- **Send login email code**
+- **Send login email code**
 ```
 curl --location 'localhost:8082/v1/auth/send-login-email-code' \
     --header 'Authorization: <token>' \
@@ -151,7 +151,7 @@ curl --location 'localhost:8082/v1/auth/send-login-email-code' \
         "reference_id": "<reference_id>"
     }'
 ```
--- **Send login phone code**
+- **Send login phone code**
 ```
 curl --location 'localhost:8082/v1/auth/send-login-phone-code' \
     --header 'Authorization: <token>' \
@@ -160,7 +160,7 @@ curl --location 'localhost:8082/v1/auth/send-login-phone-code' \
         "reference_id": "<reference_id>"
     }'
 ```
--- **Verify login email code**
+- **Verify login email code**
 ```
 curl --location 'localhost:8082/v1/auth/verify-login-email-code' \
     --header 'Authorization: <token>' \
@@ -169,6 +169,24 @@ curl --location 'localhost:8082/v1/auth/verify-login-email-code' \
         "reference_id": "<reference_id>",
         "code": "<code>"
     }'
+```
+
+- **Verify login phone code**
+```
+curl --location 'localhost:8082/v1/auth/verify-login-phone-code' \
+    --header 'Authorization: <token>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "reference_id": "<reference_id>",
+        "code": "<code>"
+    }'
+```
+
+-- **Disavow**
+```
+curl --location --request GET 'localhost:8082/v1/hacked/disavow?ref=<ref_id>' \
+    --header 'Content-Type: application/json' \
+    --data '{}'
 ```
 
 ---
