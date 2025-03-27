@@ -553,7 +553,7 @@ func (h *LoginController) isRequiredMFA(ctx context.Context, userID string, ipAd
 		return true, nil
 	}
 
-	if !analysis.LatestSuccessFromIP.Valid || analysis.LatestSuccessFromIP.Time.Before(time.Now().Add(-time.Hour*24)) {
+	if !analysis.LatestSuccessFromIP.Valid || analysis.LatestSuccessFromIP.Time.After(time.Now().Add(time.Hour*24)) {
 		return true, nil
 	}
 

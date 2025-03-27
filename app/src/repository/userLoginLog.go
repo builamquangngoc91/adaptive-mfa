@@ -98,14 +98,14 @@ func (r *UserLoginLogRepository) GetAnalysis(ctx context.Context, tx *sql.Tx, us
 			FROM user_login_logs ull 
 			WHERE ull.user_id = $1
 				AND ull.ip_address = $2
-				AND ull.login_status = 'fail'
+				AND ull.login_status = 'failed'
 				AND ull.created_at > (SELECT created_at FROM latest_success_from_ip)
 		),
 		count_attempts AS (
 			SELECT count(ull.id) AS attempt_count
 			FROM user_login_logs ull 
 			WHERE ull.user_id = $1
-				AND ull.login_status = 'fail'
+				AND ull.login_status = 'failed'
 				AND ull.created_at > (SELECT created_at FROM latest_success)
 		),
 		count_disavowed_from_ip AS (
