@@ -9,8 +9,7 @@ type IHealthController interface {
 	Health(ctx context.Context) (*domain.HealthResponse, error)
 }
 
-type HealthController struct {
-}
+type HealthController struct{}
 
 func NewHealthController() IHealthController {
 	return &HealthController{}

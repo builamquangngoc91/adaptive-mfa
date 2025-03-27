@@ -18,3 +18,10 @@ func NewNullTime(t time.Time) sql.NullTime {
 		Valid: true,
 	}
 }
+
+func NewNullInt64(i int64) sql.NullInt64 {
+	return sql.NullInt64{
+		Int64: i,
+		Valid: true,
+	}
+}

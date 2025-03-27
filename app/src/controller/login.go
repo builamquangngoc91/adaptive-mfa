@@ -109,6 +109,8 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		}
 	}()
 
+	fmt.Println("login")
+
 	// TODO: rate limit
 
 	requestID := common.GetRequestID(ctx)
@@ -131,17 +133,17 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		Username: user.Username,
 	}
 
-	err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(requestID), mfaMetadata, ptr.ToPtr(time.Minute*5), false)
-	if err != nil {
-		return nil, appError.WithAppError(err, appError.CodeCacheError)
-	}
-
 	requiredMFA, err = h.isRequiredMFA(ctx, user.ID, common.GetIPAddress(ctx))
 	if err != nil {
 		return nil, err
 	}
 
 	if requiredMFA {
+		err = h.cache.SetJSON(ctx, cache.GetMFAReferenceIDKey(requestID), mfaMetadata, ptr.ToPtr(time.Minute*5), false)
+		if err != nil {
+			return nil, appError.WithAppError(err, appError.CodeCacheError)
+		}
+
 		return &domain.LoginResponse{
 			RequiredMFA: requiredMFA,
 			ReferenceID: requestID,
