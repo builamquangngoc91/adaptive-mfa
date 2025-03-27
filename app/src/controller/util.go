@@ -12,14 +12,7 @@ import (
 	"adaptive-mfa/pkg/ptr"
 )
 
-func RateLimit(ctx context.Context, _cache cache.ICache, key string, threshold int64, lockDuration time.Duration, success bool) error {
-	if success {
-		if err := _cache.Del(ctx, key); err != nil {
-			return appError.WithAppError(err, appError.CodeCacheError)
-		}
-		return nil
-	}
-
+func RateLimit(ctx context.Context, _cache cache.ICache, key string, threshold int64, lockDuration time.Duration, success *bool) error {
 	var attempts int64
 	attemptsStr, err := _cache.Get(ctx, key)
 	if err != nil && !errors.Is(err, cache.Nil) {
@@ -34,17 +27,20 @@ func RateLimit(ctx context.Context, _cache cache.ICache, key string, threshold i
 	}
 
 	if attempts >= threshold {
-		err = _cache.Set(ctx, key, fmt.Sprintf("%d", attempts+1), ptr.ToPtr(lockDuration), false)
-		if err != nil {
-			return appError.WithAppError(err, appError.CodeCacheError)
-		}
-
 		return appError.ErrorExceededThresholdRateLimit
 	}
-	err = _cache.Set(ctx, key, fmt.Sprintf("%d", attempts+1), ptr.ToPtr(lockDuration), false)
-	if err != nil {
-		return appError.WithAppError(err, appError.CodeCacheError)
-	}
 
+	switch success {
+	case nil:
+		// no-op
+	case ptr.ToPtr(true):
+		if err := _cache.Del(ctx, key); err != nil {
+			return appError.WithAppError(err, appError.CodeCacheError)
+		}
+	case ptr.ToPtr(false):
+		if err := _cache.Set(ctx, key, fmt.Sprintf("%d", attempts+1), ptr.ToPtr(lockDuration), false); err != nil {
+			return appError.WithAppError(err, appError.CodeCacheError)
+		}
+	}
 	return nil
 }

@@ -124,19 +124,22 @@ func (h *LoginController) Login(ctx context.Context, req *domain.LoginRequest) (
 		return nil, appError.WithAppError(err, appError.CodeInternalServerError)
 	}
 
+	loginAttemptsKey := cache.GetLoginAttemptsKey(user.ID, common.GetIPAddress(ctx))
+	if err := RateLimit(ctx, h.cache, loginAttemptsKey, h.cfg.RateLimit.LoginAttemptsThreshold, h.cfg.RateLimit.LoginAttemptsLockDuration, nil); err != nil {
+		if errors.Is(err, appError.ErrorExceededThresholdRateLimit) {
+			return nil, appError.ErrorExceededLoginAttempts
+		}
+		return nil, err
+	}
+
 	err = bcrypt.CompareHashAndPassword([]byte(user.HashPassword), []byte(req.Password))
 	switch err {
 	case nil:
-		loginAttemptsKey := cache.GetLoginAttemptsKey(user.ID, common.GetIPAddress(ctx))
-		if err := RateLimit(ctx, h.cache, loginAttemptsKey, h.cfg.RateLimit.LoginAttemptsThreshold, h.cfg.RateLimit.LoginAttemptsLockDuration, true); err != nil {
-			if errors.Is(err, appError.ErrorExceededThresholdRateLimit) {
-				return nil, appError.ErrorExceededLoginAttempts
-			}
+		if err := RateLimit(ctx, h.cache, loginAttemptsKey, h.cfg.RateLimit.LoginAttemptsThreshold, h.cfg.RateLimit.LoginAttemptsLockDuration, ptr.ToPtr(true)); err != nil {
 			return nil, err
 		}
 	case bcrypt.ErrMismatchedHashAndPassword:
-		loginAttemptsKey := cache.GetLoginAttemptsKey(user.ID, common.GetIPAddress(ctx))
-		if err := RateLimit(ctx, h.cache, loginAttemptsKey, 5, time.Hour*24, false); err != nil {
+		if err := RateLimit(ctx, h.cache, loginAttemptsKey, h.cfg.RateLimit.LoginAttemptsThreshold, h.cfg.RateLimit.LoginAttemptsLockDuration, ptr.ToPtr(false)); err != nil {
 			return nil, err
 		}
 		return nil, appError.ErrorUsernameOrPasswordInvalid
@@ -367,12 +370,10 @@ func (h *LoginController) VerifyLoginEmailCode(ctx context.Context, req *domain.
 
 	match := mfaMetadata.Code == req.Code
 	key := cache.GetLoginVerificationAttemptsKey(mfaMetadata.UserID, common.GetIPAddress(ctx))
-	err = RateLimit(ctx, h.cache, key, h.cfg.RateLimit.LoginVerificationAttemptsThreshold, h.cfg.RateLimit.LoginVerificationAttemptsLockDuration, match)
+	err = RateLimit(ctx, h.cache, key, h.cfg.RateLimit.LoginVerificationAttemptsThreshold, h.cfg.RateLimit.LoginVerificationAttemptsLockDuration, ptr.ToPtr(match))
 	switch err {
 	case nil:
-		if !match {
-			return nil, appError.ErrorInvalidMFACode
-		}
+		// no-op
 	case appError.ErrorExceededThresholdRateLimit:
 		return nil, appError.ErrorExceededLoginVerificationAttempts
 	default:
@@ -486,12 +487,10 @@ func (h *LoginController) VerifyLoginPhoneCode(ctx context.Context, req *domain.
 
 	match := mfaMetadata.Code == req.Code
 	key := cache.GetLoginVerificationAttemptsKey(mfaMetadata.UserID, common.GetIPAddress(ctx))
-	err = RateLimit(ctx, h.cache, key, h.cfg.RateLimit.LoginVerificationAttemptsThreshold, h.cfg.RateLimit.LoginVerificationAttemptsLockDuration, match)
+	err = RateLimit(ctx, h.cache, key, h.cfg.RateLimit.LoginVerificationAttemptsThreshold, h.cfg.RateLimit.LoginVerificationAttemptsLockDuration, ptr.ToPtr(match))
 	switch err {
 	case nil:
-		if !match {
-			return nil, appError.ErrorInvalidMFACode
-		}
+		// no-op
 	case appError.ErrorExceededThresholdRateLimit:
 		return nil, appError.ErrorExceededLoginVerificationAttempts
 	default:

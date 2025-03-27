@@ -24,5 +24,9 @@ go.work.sum
 # env file
 .env
 
-app/local_data/
-app/tmp/
+src/tmp/
+
+local_data/
+pkg/
+
+.DS_Store

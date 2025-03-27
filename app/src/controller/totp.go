@@ -12,6 +12,7 @@ import (
 	"adaptive-mfa/pkg/common"
 	"adaptive-mfa/pkg/database"
 	appError "adaptive-mfa/pkg/error"
+	"adaptive-mfa/pkg/ptr"
 	"adaptive-mfa/repository"
 
 	"github.com/google/uuid"
@@ -121,12 +122,10 @@ func (c *TOTPController) VerifyTOTPCode(ctx context.Context, req *domain.VerifyT
 
 	valid := totp.Validate(req.Code, userMFA.Metadata.Secret)
 	key := cache.GetLoginVerificationAttemptsKey(mfaMetadata.UserID, common.GetIPAddress(ctx))
-	err = RateLimit(ctx, c.cache, key, c.cfg.RateLimit.LoginVerificationAttemptsThreshold, c.cfg.RateLimit.LoginVerificationAttemptsLockDuration, valid)
+	err = RateLimit(ctx, c.cache, key, c.cfg.RateLimit.LoginVerificationAttemptsThreshold, c.cfg.RateLimit.LoginVerificationAttemptsLockDuration, ptr.ToPtr(valid))
 	switch err {
 	case nil:
-		if !valid {
-			return nil, appError.ErrorInvalidMFACode
-		}
+		// no-op
 	case appError.ErrorExceededThresholdRateLimit:
 		return nil, appError.ErrorExceededLoginVerificationAttempts
 	default:
