@@ -111,7 +111,9 @@ The system exposes five main groups of APIs:
 - **Docker** – Containerization for deployment  
 - **PostgreSQL** – Persistent data storage  
 - **Redis** – Fast in-memory storage for verification codes and session data  
-- **Prometheus** – Monitoring and metrics collection  
+- **Prometheus** – Monitoring and metrics collection
+
+--- 
 
 ### Key Libraries
 
@@ -119,6 +121,55 @@ The system exposes five main groups of APIs:
 - `prometheus/client_golang` – Exporting performance metrics  
 - `go-redis/redis` – Redis client for storing temporary MFA/session data  
 - `database/sql` – Standard SQL interface for PostgreSQL interaction
+
+---
+
+## APIs
+
+- **Login**
+  ```
+  curl --location 'localhost:8082/v1/auth/login' \
+      --header 'Content-Type: application/json' \
+      --data '{
+          "username": "<username>",
+          "password": "<password>"
+      }'
+  ```
+-- **Login with MFA**
+```
+curl --location 'localhost:8082/v1/auth/login-with-mfa' \
+    --header 'Content-Type: application/json' \
+    --data '{"reference_id":"<reference_id>","private_key":"<private_key>"}
+    '
+```
+-- **Send login email code**
+```
+curl --location 'localhost:8082/v1/auth/send-login-email-code' \
+    --header 'Authorization: <token>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "reference_id": "<reference_id>"
+    }'
+```
+-- **Send login phone code**
+```
+curl --location 'localhost:8082/v1/auth/send-login-phone-code' \
+    --header 'Authorization: <token>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "reference_id": "<reference_id>"
+    }'
+```
+-- **Verify login email code**
+```
+curl --location 'localhost:8082/v1/auth/verify-login-email-code' \
+    --header 'Authorization: <token>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "reference_id": "<reference_id>",
+        "code": "<code>"
+    }'
+```
 
 ---
 
