@@ -191,6 +191,13 @@ curl --location --request GET 'localhost:8082/v1/hacked/disavow?ref=<ref_id>' \
 
 ---
 
+## Monitor:
+- **Raw metrics**: Access link **http://localhost:8082/metrics**, you can read all metrics in raw data
+- **Visualize metrics**: Access link **http://localhost:9090/graph**, you can visualize metrics
+<img width="1453" src="https://github.com/user-attachments/assets/d759b0ae-6be1-449f-960b-12c10db90d9c" />
+
+---
+
 ## Contributions & Architecture Highlights
 
 - **MFA System**  
