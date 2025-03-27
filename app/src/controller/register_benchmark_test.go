@@ -57,5 +57,3 @@ func callApiRegister(b *testing.B, fullname, email, password string) {
 		b.Fatalf("Failed to read response: %v", err)
 	}
 }
-
-

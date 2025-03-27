@@ -17,4 +17,3 @@ func TestHealth(t *testing.T) {
 		assert.Equal(t, "OK", health.Status)
 	})
 }
-

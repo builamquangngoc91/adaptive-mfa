@@ -1,1 +1,1 @@
-DROP TABLE user_login_logs;
+DROP TABLE "user_login_logs";

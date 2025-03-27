@@ -42,3 +42,6 @@ mockgen:
 benchmark:
 	$(DOCKER_RUN_TEST) go test -bench=. -benchmem -cpu=1,2,4 ./...
 
+lint:
+	$(DOCKER_RUN) go fmt ./...
+
