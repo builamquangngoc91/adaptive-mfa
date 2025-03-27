@@ -73,7 +73,7 @@ func main() {
 	s.Router.Get("/metrics", promhttp.Handler())
 
 	v1Group := s.Router.Group("/v1")
-	v1Group.Use(middleware.RequestIDMiddleware)
+	v1Group.Use(middleware.RequestInfoMiddleware)
 	{
 		authGroup := v1Group.Group("/auth")
 		authGroup.Post("/verify-totp-code", totpController.VerifyTOTPCode)
