@@ -45,6 +45,13 @@ func main() {
 	}
 	defer cache.Close()
 
+	prometheus.MustRegister(monitor.HttpRequestCounter)
+	prometheus.MustRegister(monitor.ActiveRequestsGauge)
+	prometheus.MustRegister(monitor.LatencyHistogram)
+	prometheus.MustRegister(monitor.LatencySummary)
+	prometheus.MustRegister(monitor.SMSSendCounter)
+	prometheus.MustRegister(monitor.EmailSendCounter)
+
 	userRepository := repository.NewUserRepository(db)
 	userMFARepository := repository.NewUserMFARepository(db)
 	userLoginLogRepository := repository.NewUserLoginLogRepository(db)
@@ -54,14 +61,7 @@ func main() {
 		return "Health check OK", nil
 	})
 	s.Router.Use(middleware.PrometheusMiddleware)
-
-	prometheus.MustRegister(monitor.HttpRequestCounter)
-	prometheus.MustRegister(monitor.ActiveRequestsGauge)
-	prometheus.MustRegister(monitor.LatencyHistogram)
-	prometheus.MustRegister(monitor.LatencySummary)
-	prometheus.MustRegister(monitor.SMSSendCounter)
-	prometheus.MustRegister(monitor.EmailSendCounter)
-
+	s.Router.Use(middleware.RecoveryMiddleware)
 	s.Router.Get("/metrics", promhttp.Handler())
 
 	emailService := email.NewEmail()

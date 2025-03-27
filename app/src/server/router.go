@@ -147,20 +147,37 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 			resp := results[0].Interface()
 			respErr := results[1].Interface()
-			if _err, ok := respErr.(appError.AppError); ok && respErr != nil {
-				logger.NewLogger().
-					WithContext(ctx).
-					With("method", req.Method).
-					With("path", req.URL.Path).
-					With("error", _err.Error()).
-					Error("Handler error")
-				w.WriteHeader(_err.StatusCode())
-				json.NewEncoder(w).Encode(&domain.Error{
-					Message:   _err.Error(),
-					Code:      int(_err.Code()),
-					RequestID: common.GetRequestID(ctx),
-				})
-				return
+			if respErr != nil {
+				if _err, ok := respErr.(appError.AppError); ok {
+					logger.NewLogger().
+						WithContext(ctx).
+						With("method", req.Method).
+						With("path", req.URL.Path).
+						With("error", _err.Error()).
+						Error("Handler error")
+					w.WriteHeader(_err.StatusCode())
+					json.NewEncoder(w).Encode(&domain.Error{
+						Message:   _err.Error(),
+						Code:      int(_err.Code()),
+						RequestID: common.GetRequestID(ctx),
+					})
+					return
+				}
+
+				if err, ok := respErr.(error); ok {
+					logger.NewLogger().
+						WithContext(ctx).
+						With("method", req.Method).
+						With("path", req.URL.Path).
+						With("error", err.Error()).
+						Error("Handler error")
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(&domain.Error{
+						Message:   err.Error(),
+						RequestID: common.GetRequestID(ctx),
+					})
+					return
+				}
 			}
 
 			logger.NewLogger().
