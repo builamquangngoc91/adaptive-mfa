@@ -43,3 +43,31 @@ The goal is to maintain a strong security posture while minimizing disruption to
 
 - **Database**  
   Stores user profiles, login history, and MFA configuration data.
+
+---
+
+## Sequence Diagram
+- **Login and Login with MFA flows**
+![image](https://github.com/user-attachments/assets/2429d394-e296-4a6e-8cf2-99a04d3afed3)
+- **Disavow login request flow**
+![image](https://github.com/user-attachments/assets/10060165-f59b-43d1-b9c7-692050767ed6)
+
+## Database schema
+![image](https://github.com/user-attachments/assets/edeae327-0a77-4fde-bc66-8de480d06b8a)
+
+## Technology:
+- **Golang**: Main programming language for this project
+- **Docker**: Build contianer of project
+- **Postgres**: Save/Get data
+- **Prometheus**: Display metrics
+- **Libraries**:
+  - bcrypt: create hashed pasword
+  - prometheus: send metrics
+  - redis: interact with redis
+  - database/sql: interact with database
+## Contributions:
+- **MFA System**: A system to handle user login with MFA (rely on risk assesstment module)
+- **Custom HTTP Server**: Custom HTTP Server that reduce boilerplate code likes (covert request body to struct, handle response error, write response header, write response body). Now engineer only need declare request, response structs and focus handle business code.
+- **Log tracking**: A log mechaism to help trace logs over services/ layers with **request_id** when user get an error.
+
+
